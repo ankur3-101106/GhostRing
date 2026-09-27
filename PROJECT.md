@@ -36,7 +36,7 @@ sudo -E cargo run --release
 
 ## License
 
-This project is licensed under the GNU General Public License v2.0 (GPLv2). The Linux kernel eBPF verifier requires GPL‑compatible licensing for advanced BPF helper functions.
+This project is licensed under the GNU General Public License v3.0 (GPLv3). The Linux kernel eBPF verifier requires GPL‑compatible licensing for advanced BPF helper functions.
 
 ## ⚠️ Sensitive Information
 
