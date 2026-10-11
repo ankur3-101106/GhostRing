@@ -1,0 +1,661 @@
+# GhostRing Troubleshooting Guide Deep Dive
+
+## Introduction
+
+This comprehensive troubleshooting guide covers the most common issues encountered during GhostRing development, deployment, and operation. Each entry includes symptoms, likely causes, diagnostic steps, and fixes.
+
+## Build and Compile Issues
+
+### 1. "unknown target keyword `bpfel-unknown-none`"
+
+**Symptom**: 
+```
+error: unknown target keyword `bpfel-unknown-none`
+```
+
+**Likely Causes**:
+- Rust toolchain not set to Nightly
+- `rust-src` component not installed
+- Wrong `Cargo.toml` configuration
+
+**Diagnostic Steps**:
+```bash
+# Check toolchain
+rustup show
+
+# Should display: active toolchain: nightly-x86_64-unknown-linux-gnu
+
+# Check components
+rustup component list
+# Should show: rust-src (installed)
+
+# Verify active target
+rustup target list --installed | grep bpf
+```
+
+**Fix**:
+```bash
+# Install nightly toolchain with rust-src
+rustup toolchain install nightly --component rust-src
+rustup default nightly
+
+# Install BPF target
+rustup target add bpfel-unknown-none
+
+# Try building again
+cargo build --release --package ghostring-ebpf
+```
+
+---
+
+### 2. "bpf-linker not found"
+
+**Symptom**:
+```
+error: failed to run custom linker `--bpf-linker` to process linker outputs
+```
+
+**Likely Causes**:
+- `bpf-linker` not installed
+- PATH not configured
+- Wrong version
+
+**Diagnostic Steps**:
+```bash
+# Check if installed
+bpf-linker --version
+
+# Should display version number (e.g., bpf-linker 0.5)
+
+# Check PATH
+which bpf-linker
+# Should output path to binary
+```
+
+**Fix**:
+```bash
+# Install bpf-linker cargo utility
+cargo install bpf-linker
+
+# Verify
+bpf-linker --version
+
+# Add to PATH if needed (cargo install does this automatically)
+# Or restart terminal/shell
+```
+
+---
+
+### 3. "failed to parse BTF from vmlinux"
+
+**Symptom**:
+```
+warning: failed to parse BTF from vmlinux at /sys/kernel/btf/vmlinux
+```
+
+**Likely Causes**:
+- BTF not enabled in kernel configuration
+- `/sys/kernel/btf/vmlinux` doesn't exist
+- Kernel too old (pre-4.15)
+
+**Diagnostic Steps**:
+```bash
+# Check if BTF file exists
+ls -la /sys/kernel/btf/vmlinux
+
+# Should show file size > 0
+
+# Check kernel config
+zcat /proc/config.gz | grep CONFIG_BTF
+
+# Or via sysctl (if config not compressed)
+cat /boot/config-$(uname -r) | grep CONFIG_BTF
+```
+
+**Fix**:
+```bash
+# Rebuild kernel with BTF enabled
+# Or verify running kernel has BTF:
+# Modern kernels (5.8+) typically have BTF enabled by default
+
+# Confirm:
+cat /sys/kernel/btf/vmlinux | wc -c
+# Should output non-zero number
+```
+
+---
+
+### 4. "license check failed"
+
+**Symptom**:
+```
+verifier error: license check failed
+```
+or
+```
+eBPB program verification failed: license check failed
+```
+
+**Likely Causes**:
+- `__license` section not set to `GPLv3`
+- Wrong license string (`GPL` vs `GPLv3`, wrong spacing)
+- build.rs missing license flag
+
+**Diagnostic Steps**:
+```bash
+# Check ELF sections
+readelf -S target/bpfel-unknown-none/release/ghostring_ebpf | grep -i license
+
+# Should show a section named .__license or similar
+
+# Check content
+readelf -x .__license target/bpfel-unknown-none/release/ghostring_ebpf
+
+# Should output: 7 gplv3 GPLv3 0 0 (7 bytes, GPLv3 license)
+```
+
+**Fix**:
+```rust
+// In ghostring-ebpf/build.rs (CRITICAL)
+println!("cargo:rustc-link-arg-bpf=--license=GPLv3");
+```
+
+**Verification**:
+```bash
+# Rebuild
+cargo build --release --package ghostring-ebpf
+
+# Check again
+readelf -S target/.../ghostring_ebpf | grep -i license
+```
+
+---
+
+### 5. "relocation truncated to fit: R_BPF" 
+
+**Symptom**:
+```
+error: relocation truncated to fit: R_BPF_X86_64_32 against ... - max 4 bytes
+```
+
+**Likely Causes**:
+- Linker arguments incorrect
+- `bpf-linker` not properly processing ELF
+- Missing `--target` flag
+
+**Diagnostic Steps**:
+```bash
+# Full build output
+cargo build --release --package ghostring-ebpf 2>&1 | tail -30
+```
+
+**Fix**:
+```bash
+# Ensure bpf-linker is latest version
+cargo install --force bpf-linker
+
+# Check Cargo.toml has correct crate-type
+# Should have: crate-type = ["cdylib"]
+
+# Ensure no conflicting linker flags
+# Remove any manual -C linker flags that conflict
+```
+
+---
+
+### 6. "attempt to add list item twice" / duplicate section
+
+**Symptom**:
+```
+error: attempt to add list item twice
+```
+
+**Likely Causes**:
+- Duplicate `println!` macros in `build.rs`
+- Same flag emitted twice
+- conflicting `cargo:rustc-link-arg` messages
+
+**Diagnostic Steps**:
+```bash
+# Check build.rs for duplicate license emissions
+grep -n "license" ghostring-ebpf/build.rs
+
+# Should only have ONE license-related println
+```
+
+**Fix**:
+```rust
+// build.rs - ensure only ONE license emission
+fn main() {
+    // Single license emission - critical
+    println!("cargo:rustc-link-arg-bpf=--license=GPLv3");
+    
+    // Other emitters should be conditional/unique
+    // NOT: println!("cargo:rustc-link-arg-bpf=--license=GPLv3");  // duplicate!
+    println!("cargo:rustc-link-arg-bpf=--btf");  // OK if separate
+}
+```
+
+---
+
+## Runtime Issues
+
+### 7. "No events appearing in daemon output"
+
+**Symptom**:
+```
+sudo -E cargo run --release
+```
+(Daemon starts but no output when running commands)
+
+**Likely Causes**:
+1. eBPF program not attached to any probe
+2. Tracepoint/kprobe not available on this kernel
+3. Permissions issue (missing CAP_SYS_ADMIN)
+4. Ring buffer never receives data
+5. Polling interval too long
+
+**Diagnostic Steps**:
+
+**Step 1: Check eBPF loading**
+```bash
+# Look at daemon startup output
+sudo -E cargo run --release 2>&1 | head -20
+
+# Expected: "GhostRing daemon starting", " attaching eBPF programs"
+# Unexpected: errors about license, verifier, attachment failures
+```
+
+**Step 2: Check kernel log**
+```bash
+dmesg | grep -i "ghostring\|verifier\|eBPF\|probe"
+
+# Look for:
+# - verifier errors
+# - probe attachment success/failure
+# - map creation
+```
+
+**Step 3: Check if traces are available**
+```bash
+# List available tracepoints
+sudo bpftrace -l 'tracepoint:syscalls:sys_enter_execve'
+
+# Or via perf
+perf list | grep execve
+```
+
+**Step 4: Check ring buffer**
+```bash
+# If daemon running, check for events
+# May need to wait for polling cycle (default 1s-10s depending on config)
+
+# Or force a poll
+sudo cat /sys/kernel/debug/tracing/trace_pipe
+```
+
+**Fixes**:
+```bash
+# 1. Ensure correct kernel (5.8+ with BTF)
+# 2. Run with sudo (requires CAP_SYS_ADMIN for eBPF operations)
+# 3. Check probe availability on this specific kernel
+# 4. Increase polling frequency in daemon code
+#    (reduce sleep intervals in poll loop)
+```
+
+---
+
+### 8. "buffer overflow" errors
+
+**Symptom**:
+```
+warning: ring buffer overflow on cpuX
+```
+or
+```
+events dropped: lost_events > 0
+```
+
+**Likely Causes**:
+- Ring buffer too small for event volume
+- High throughput of syscalls
+- `max_entries` in PerfEventArray map too low
+
+**Diagnostic Steps**:
+```bash
+# Check lost events counter (if available)
+# Via perf header in user space, or daemon logs
+
+# Check map configuration
+# The PerfEventArray max_entries is set during map creation
+# Typically: one entry per CPU, or configurable
+
+# Inspect via bpftool
+sudo bpftool map show
+# Shows map names and max_entries values
+```
+
+**Fixes**:
+```bash
+# 1. Increase map max_entries in ghostring-ebpf source
+# static PERF_EVENTS: PerfEventArray = PerfEventArray::new(
+#     b"exec_events\0".as_ptr() as *const c_char,
+# // );
+// # Can adjust: PerfEventArray::new_with_max(b"name\0".as_ptr(), 8192);
+
+// 2. Increase buffer sizes
+// In user daemon: adjust polling interval
+// Less frequent polling = larger batches possible
+
+# 3. Tune for workload
+# High-throughput servers: larger buffers, less frequent polling
+# Development/laptop: smaller buffers, more frequent polling
+```
+
+---
+
+### 9. "permission denied" / "ephemeral" errors
+
+**Symptom**:
+```
+Error: Failed to load eBPF program: Permission denied
+```
+or
+```
+EPERM: Operation not permitted
+```
+
+**Likely Causes**:
+- Missing `CAP_SYS_ADMIN` capability
+- Running without `sudo`
+- SELinux/AppArmor blocking eBPF
+- Kernel restrictions
+
+**Diagnostic Steps**:
+```bash
+# Check capabilities
+id -a
+
+# Should show: uid=0(root) gid=0(root) groups=0(root)
+
+# Check kernel restrictions
+dmesg | tail -20
+
+# Check SELinux/AAPRM status
+getenforcestatus 2>/dev/null || echo "SELinux not enabled"
+```
+
+**Fixes**:
+```bash
+# 1. Always run daemon with sudo
+sudo -E cargo run --release
+
+# 2. Check if SELinux is blocking
+setenforce 0  # Set to permissive temporarily
+
+# 3. Verify kernel doesn't have eBPF restrictions
+cat /sys/kernel/debug/tracing/core_image 2>/dev/null || echo "tracing available"
+
+# 4. For non-root development (not recommended for production):
+#    Set environment variable to allow some operations
+#    (limits security, not recommended)
+```
+
+---
+
+### 10. "strace shows eBPF program not firing"
+
+**Symptom**:
+```
+strace some-command
+# Shows syscall execution but no GhostRing event output
+```
+
+**Likely Causes**:
+1. Wrong probe attachment (tracepoint vs kprobe mismatch)
+2. eBPF program attached to wrong tracepoint
+3. Kernel version mismatch (probe not available)
+4. BPF program loaded but not firing
+
+**Diagnostic Steps**:
+
+**Step 1: Verify probe availability**
+```bash
+# List available tracepoints
+sudo bpftrace -l 'tracepoint:syscalls:sys_enter_execve'
+
+# Or check kernel has the probe
+cat /sys/kernel/debug/tracepoints/syscalls/sys_enter_execve
+# Should exist if probe available
+```
+
+**Step 2: Check eBPF program loaded**
+```bash
+# List loaded BPF programs
+bpftool prog show
+
+# Look for GhostRing program
+# Should show type, attachment, license
+```
+
+**Step 3: Check attachment**
+```bash
+# Verify program is attached to expected probe
+bpftool prog show id <prog_id> attachment
+
+# Should show: tracepoint:syscalls:sys_enter_execve (or similar)
+```
+
+**Fixes**:
+```bash
+# 1. Check kernel version supports the probe
+# 2. Rebuild eBPF program (maybe attachment changed)
+# 3. Verify tracepoint name matches kernel version
+# 4. Try alternative attachment point (kprobe vs tracepoint)
+# 5. Re-run sudo -E cargo run --release to reload eBPF
+```
+
+---
+
+### 10. "high CPU usage by daemon"
+
+**Symptom**:
+```
+top - cpu% used by ghostring process
+shows 20%+ CPU usage
+```
+
+**Likely Causes**:
+1. Polling interval too short (too frequent polls)
+2. Too many CPUs being polled
+3. Large batch size causing per-event overhead
+4. Inefficient event parsing in user space
+5. Spin-loop without yield
+
+**Diagnostic Steps**:
+```bash
+# Monitor CPU usage
+top -H -p $(pgrep -f ghostring) 
+
+# Or via ps
+ps -o pid,pcpu,command -C ghostring
+
+# Profile polling latency
+# Add timing instrumentation to daemon
+```
+
+**Fixes**:
+```bash
+# 1. Increase polling interval (default may be 1ms, try 5-10ms)
+# In ghostring/src/polling.rs or similar
+
+# 2. Limit CPU polling (only online CPUs, or subset)
+// Use cpu affinity or mask
+
+# 3. Optimize batch processing
+// Process events in larger batches (64-128 vs 8-16)
+
+// 4. Add yield between poll cycles
+tokio::task::yield_now().await;
+
+// 5. Profile and identify hot path
+// Use cargo profiler or external tools
+```
+
+**Recommended Polling Settings**:
+
+| Scenario | Poll Interval | CPU Mask | Expected CPU |
+|---|---|---|---|
+| **Development** | 1ms | All CPUs | ~5-10% |
+| **Production light** | 5ms | All CPUs | ~2-5% |
+| **Production heavy** | 10-20ms | All CPUs | ~1-3% |
+| **Low-power/embedded** | 20ms+ | Subset CPUs | <1% |
+
+---
+
+### 11. "struct size mismatch after code change"
+
+**Symptom**:
+```
+error: struct size changed from 40 to 44 bytes
+```
+or
+```
+compilation error in ghostring: expected 40-byte struct, got 44
+```
+
+**Likely Causes**:
+- Added/removed field in `ghostring-common` structs
+- Changed field type (e.g., u32 → u64)
+- Forgetting `#[repr(C)]` or layout change
+
+**Diagnostic Steps**:
+```bash
+# Check which struct changed
+cargo build --release --workspace 2>&1 | grep -i "size\|struct"
+
+# Or explicitly check
+cargo test -p ghostring-common -- test_struct_sizes
+```
+
+**Fixes**:
+```bash
+# 1. Revert struct change if unintended
+# 2. If change intentional, update all dependent code:
+#    - ghostring-ebpf: rebuild eBPF bytecode
+#    - ghostring: rebuild user daemon
+#    - Update version (major version for breaking struct change)
+#    - Update documentation (prerequisites/ghostring-common-structs.md)
+
+// Example: adding a field to ExecveEvent
+// Old: 40 bytes
+// New: 48 bytes (added 8-byte field)
+
+// Requires:
+// - version bump (0.x.y → 1.0.0 or minor)
+// - rebuild both crates
+// - update user-space parsing
+// - warn downstream consumers
+```
+
+---
+
+### 12. "JSON export not working" (roadmap feature)
+
+**Symptom**:
+```
+--json flag added but output still text format
+```
+or
+```
+serde error: unexpected end of input
+```
+
+**Likely Causes**:
+1. `serde` feature not enabled in `ghostring/Cargo.toml`
+2. `--json` CLI flag not properly parsed
+3. Event struct not implementing `Serialize`
+4. Feature flag mismatch between crates
+
+**Diagnostic Steps**:
+```bash
+# Check Cargo.toml features
+grep -A 10 '\[features\]' /path/to/ghostring/Cargo.toml
+
+# Should include: json-export = ["serde"]
+
+# Check CLI flag parsing
+cargo run --release -- --json 2>&1
+# Should show JSON output if feature enabled
+
+# Check event struct serialization
+grep -r "serde" /path/to/ghostring-ebpf/ /path/to/ghostring-common/ /path/to/ghostring/
+```
+
+**Fixes**:
+```rust
+// 1. Enable feature in ghostring/Cargo.toml
+# ghostring/Cargo.toml
+[features]
+json-export = ["serde"]
+
+# 2. Add serde dependency
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+
+// 3. Implement Serialize for event structs
+use serde::Serialize;
+
+#[derive(Debug, Serialize)]
+pub struct ExecveEvent {
+    pub pid: u32,
+    pub uid: u32,
+    pub command: [u8; 16],
+    pub timestamp: u64,
+    // ...
+}
+
+// 4. Use in daemon
+// With --json flag, output serde_json::to_string(&event)
+```
+
+---
+
+### 12. "backtrace on panic"
+
+**Symptom**:
+```
+GhostRing panicked: called `SomeFunction` with `SomeError`
+```
+
+**Likely Causes**:
+1. Out-of-bounds array access
+2. Null pointer dereference (rare in safe Rust)
+3. Integer overflow
+4. Stack overflow from recursive eBPF helper calls
+
+**Diagnostic Steps**:
+```bash
+# Run with panic information
+RUST_BACKTRACE=1 sudo -E cargo run --release 2>&1
+
+# Or via environment variable
+export RUST_BACKTRACE=1
+sudo cargo run --release
+```
+
+**Fixes**:
+```rust
+// 1. Add proper bounds checking
+// 2. Use Option/Optimize for nullable data
+// 3. Add overflow checks: checked_add(), safe_division()
+// 4. Limit recursion in eBPF (verifier prevents infinite loops)
+// 5. In user space: add panic handler with proper logging
+
+// Custom panic handler (in ghostring/Cargo.toml):
+[panic = "custom_handler"]
+// Or revert to default (abort) for production
+```
+
+---
+*This document covers the GhostRing troubleshooting guide deep dive. For eBPF programming, see `prerequisites/ebpf-internals.md`. For Aya framework, see `prerequisites/aya-framework.md`. For struct definitions, see `prerequisites/ghostring-common-structs.md`. For build system, see `prerequisites/build-system-workspace.md`. For license compliance, see `prerequisites/license-compliance-deep.md`. For roadmap features, see `prerequisites/roadmap-features-deep.md`.*
