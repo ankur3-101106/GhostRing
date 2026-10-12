@@ -68,22 +68,20 @@ ghostring/
 | **Kernel Version** | 5.8+ with BTF enabled for optimal flexibility |
 | **Rust Toolchain** | Nightly with `rust-src` component |
 
-## Related Knowledge
+## Related Documentation
 
-This overview connects all the knowledge base entries:
-
-- [[ebpf-fundamentals.md]]: eBPF core concepts underlying the architecture
-- [[kernel-instrumentation.md]]: Ring 0 instrumentation details
-- [[event-transport.md]]: Full telemetry pipeline implementation
-- [[development-environment.md]]: Prerequisites for getting started
-- [[ghostring-common-structs.md]]: C-compatible struct design for kernel↔user communication
-- [[ghostring-ebpf.md]]: eBPF crate (no_std, bpfel-unknown-none) — *note: referenced conceptually*
-- [[ghostring-user-daemon.md]]: User-space daemon (std, Tokio async)
-- [[aya-framework.md]]: Aya crate for eBPF program loading and attachment
-- [[btf-co-re-deep-dive.md]]: BTF and CO-RE portability mechanism
-- [[build-system-workspace.md]]: Cargo workspace and build pipeline configuration
-- [[license-compliance-deep.md]]: GPLv3 requirement and kernel verifier
-- [[roadmap-features-deep.md]]: Planned feature extensions
-- [[security-model-deep-dive.md]]: Security model and threat analysis
-- [[testing-strategy.md]]: Testing approach and CI/CD gates
-- [[troubleshooting-guide.md]]: Common issues and resolutions
+- [eBPF Fundamentals](./ebpf-fundamentals.md) — Core concepts underlying the eBPF runtime environment.
+- [Kernel Instrumentation](./kernel-instrumentation.md) — Ring 0 instrumentation details, tracepoints, and probe types.
+- [Event Transport](./event-transport.md) — Telemetry transmission mechanics and ring buffer operations.
+- [Development Environment](./development-environment.md) — Prerequisites and environment setup for compiling GhostRing.
+- [ghostring-common Struct Design](./ghostring-common-structs.md) — C-compatible struct specifications for kernel↔user communication.
+- [eBPF Internals & Bytecode](./ebpf-internals.md) — In-depth execution model for the `ghostring-ebpf` crate.
+- [ghostring User Daemon](./ghostring-user-daemon.md) — Asynchronous Tokio daemon architecture and ring buffer ingestion.
+- [Aya Framework](./aya-framework.md) — Aya framework details for eBPF program loading and attachment.
+- [BTF & CO-RE Deep Dive](./btf-co-re-deep-dive.md) — BTF format and CO-RE portability mechanisms across Linux kernels.
+- [Build System & Workspace](./build-system-workspace.md) — Workspace configuration and multi-crate build pipeline.
+- [License Compliance Deep Dive](./license-compliance-deep.md) — GPLv3 requirements and Linux kernel verifier access.
+- [Roadmap Features Deep Dive](./roadmap-features-deep.md) — Technical designs for future observability capabilities.
+- [Security Model Deep Dive](./security-model-deep-dive.md) — Threat model and defense-in-depth principles.
+- [Testing Strategy](./testing-strategy.md) — Multi-tier testing approach and quality gates.
+- [Troubleshooting Guide](./troubleshooting-guide.md) — Resolution steps for build and runtime issues.

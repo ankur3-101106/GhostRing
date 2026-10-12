@@ -297,5 +297,12 @@ If the project ever needs to change licenses:
 [ ] Source code repository includes all materials needed to modify and rebuild
 ```
 
----
-*This document covers GhostRing license compliance deep dive. For eBPF programming, see `prerequisites/ebpf-internals.md`. For Aya framework, see `prerequisites/aya-framework.md`. For struct definitions, see `prerequisites/ghostring-common-structs.md`. For build system, see `prerequisites/build-system-workspace.md`. For prerequisites overview, see the `prerequisites/` directory.*
+## Related Documentation
+
+- [Security Requirements](./security-requirements.md) — Security motivations and licensing prerequisites for kernel observability.
+- [Security Model Deep Dive](./security-model-deep-dive.md) — Threat model and integrity guarantees of kernel-mode telemetry.
+- [eBPF Internals & Bytecode](./ebpf-internals.md) — The `__license` ELF section and verifier license checking mechanics.
+- [Aya Framework](./aya-framework.md) — Aya's compile-time licensing constraints and helper declarations.
+- [Build System & Workspace](./build-system-workspace.md) — Passing linker license arguments via `build.rs` and `bpf-linker`.
+- [Kernel Instrumentation](./kernel-instrumentation.md) — Tracing helpers that require GPL-compatible licensing.
+- [Troubleshooting Guide](./troubleshooting-guide.md) — Resolving `VerifierError::License` and permission failures.

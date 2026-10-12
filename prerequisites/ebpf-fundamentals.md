@@ -45,12 +45,13 @@ The Linux kernel eBPF verifier checks the program's license section. If the prog
 - `bpf_get_current_pid_tgid` - process IDs
 - `bpf_get_current_uid_gid` - user identifiers
 
-## Related Knowledge
+## Related Documentation
 
-This file forms the foundation for several other knowledge base entries:
-
-- [[kernel-instrumentation.md]]: Builds on these concepts for Ring 0 instrumentation
-- [[development-environment.md]]: Prerequisites for compiling eBPF bytecode
-- [[btf-co-re-deep-dive.md]]: BTF and CO-RE portability mechanics
-- [[license-compliance-deep.md]]: GPLv3 requirement for helper access
-- [[roadmap-features-deep.md]]: Roadmap feature: advanced path extraction via `bpf_probe_read_user_str`
+- [Kernel Instrumentation](./kernel-instrumentation.md) — Practical implementation of Ring 0 tracepoint and kprobe interception.
+- [eBPF Internals & Bytecode](./ebpf-internals.md) — ISA, register conventions, verifier static analysis, and ELF sections.
+- [Aya Framework](./aya-framework.md) — Pure-Rust framework bindings for program loading and BPF helper calls.
+- [Event Transport](./event-transport.md) — Data flow and `PerfEventArray` mechanics from kernel to user space.
+- [BTF & CO-RE Deep Dive](./btf-co-re-deep-dive.md) — BPF Type Format and Compile Once, Run Everywhere cross-kernel portability.
+- [License Compliance Deep Dive](./license-compliance-deep.md) — GPLv3 requirements for accessing restricted BPF helpers.
+- [Development Environment](./development-environment.md) — Toolchain setup for building `no_std` eBPF bytecode.
+- [Roadmap Features Deep Dive](./roadmap-features-deep.md) — Advanced path extraction using `bpf_probe_read_user_str`.

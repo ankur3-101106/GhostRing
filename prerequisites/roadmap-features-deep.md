@@ -706,5 +706,13 @@ impl Event {
 - [ ] Add roadmap checkboxes
 - [ ] Document in project docs
 
----
-*This document covers GhostRing roadmap features deep dive. For eBPF programming, see `prerequisites/ebpf-internals.md`. For Aya framework, see `prerequisites/aya-framework.md`. For struct definitions, see `prerequisites/ghostring-common-structs.md`. For build system, see `prerequisites/build-system-workspace.md`.*
+## Related Documentation
+
+- [Architecture Overview](./architecture-overview.md) — System architecture context and multi-crate roadmap milestones.
+- [Kernel Instrumentation](./kernel-instrumentation.md) — Attaching `tcp_connect` kprobes and `sys_enter_openat` tracepoints.
+- [eBPF Internals & Bytecode](./ebpf-internals.md) — Invoking `bpf_probe_read_user_str` and managing verifier complexity bounds.
+- [ghostring-common Struct Design](./ghostring-common-structs.md) — Layout specifications for new event structures (`FileEvent`, `SocketEvent`).
+- [Event Transport](./event-transport.md) — Ring buffer transport scaling for high-throughput socket and openat event streams.
+- [Perf Buffer Internals](./perf-buffer-internals.md) — Buffer tuning and head/tail management under high event rates.
+- [ghostring User Daemon](./ghostring-user-daemon.md) — Parsing new event types and exporting structured JSON for SIEM integration.
+- [Testing Strategy](./testing-strategy.md) — Test harnesses, syscall load benchmarking, and verification test suites.

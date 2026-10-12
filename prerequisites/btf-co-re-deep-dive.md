@@ -304,5 +304,12 @@ sudo cargo run --release 2>&1 | grep -i "load\|attach\|btf"
 | **Userspace BTF** | Available | Parse BTF from user binaries |
 | **BTF sampling** | Available | Profile-guided optimization |
 
----
-*This document covers BTF and CO-RE mechanics for GhostRing. For eBPF programming, see `prerequisites/ebpf-internals.md`. For Aya framework, see `prerequisites/aya-framework.md`. For struct definitions, see `prerequisites/ghostring-common-structs.md`.*
+## Related Documentation
+
+- [eBPF Internals & Bytecode](./ebpf-internals.md) — ELF sections, relocation mechanisms, and verifier requirements.
+- [Aya Framework](./aya-framework.md) — How Aya parses and relocates BTF types during program loading.
+- [Kernel Instrumentation](./kernel-instrumentation.md) — Accessing kernel context and data structures safely across kernel versions.
+- [ghostring-common Struct Design](./ghostring-common-structs.md) — Designing C-compatible structs with ABI stability across architectures.
+- [Development Environment](./development-environment.md) — Verifying `/sys/kernel/btf/vmlinux` and system dependencies.
+- [Roadmap Features Deep Dive](./roadmap-features-deep.md) — Applying CO-RE to complex nested kernel structures for path and socket extraction.
+- [Troubleshooting Guide](./troubleshooting-guide.md) — Diagnosing missing BTF sections and relocation failures.

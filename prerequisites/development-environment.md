@@ -50,6 +50,7 @@ GhostRing/
 ├── ghostring/                  # Tokio user-space daemon (std, async)
 ├── prerequisites/              # This directory — technical knowledge base
 ├── CLAUDE.md                   # Claude Code guidance
+├── COMMIT.md                   # Git commit & contribution guidelines
 ├── PROJECT.md                  # Project setup guidance
 ├── README.md                   # High-level overview and roadmap
 ├── LICENSE                     # GPLv3 license
@@ -117,3 +118,12 @@ sudo -E cargo run --release
 | Buffer overflows | PerfEventArray full | Increase buffer sizes; handle overflow in user-space polling |
 | Permission denied | Missing kernel headers | Install matching kernel headers/debug packages |
 | Compile errors | Wrong rust toolchain | `rustup default nightly`; ensure `rust-src` component |
+
+## Related Documentation
+
+- [Build System & Workspace](./build-system-workspace.md) — Multi-crate Cargo setup, build scripts, and linker commands.
+- [Architecture Overview](./architecture-overview.md) — System boundaries and crate responsibilities across the repository.
+- [eBPF Fundamentals](./ebpf-fundamentals.md) — Foundations of eBPF compilation and kernel execution.
+- [Testing Strategy](./testing-strategy.md) — Workspace test execution, linter gates, and benchmarking.
+- [Troubleshooting Guide](./troubleshooting-guide.md) — In-depth solutions for build, linker, and kernel runtime issues.
+- [License Compliance Deep Dive](./license-compliance-deep.md) — Verifier requirements for GPLv3 license compliance.

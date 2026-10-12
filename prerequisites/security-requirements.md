@@ -65,3 +65,11 @@ By moving detection logic into the kernel runtime:
 - All eBPF programs must pass kernel verifier
 - BTF support checked at build time
 - License field verified during `cargo build`
+
+## Related Documentation
+
+- [Security Model Deep Dive](./security-model-deep-dive.md) — Comprehensive threat analysis, evasion attack scenarios, and defense-in-depth posture.
+- [License Compliance Deep Dive](./license-compliance-deep.md) — Strict GPLv3 requirements and verifier checks for advanced BPF helpers.
+- [Kernel Instrumentation](./kernel-instrumentation.md) — Ring 0 execution interception ensuring tamper-resistant telemetry.
+- [eBPF Fundamentals](./ebpf-fundamentals.md) — Sandboxed kernel execution model and memory safety guarantees.
+- [Architecture Overview](./architecture-overview.md) — Multi-crate segregation ensuring security boundary enforcement.

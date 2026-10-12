@@ -279,3 +279,13 @@ Future roadmap item for SIEM integration:
 ```
 
 Always test with `cargo build --release` after version bump.
+
+## Related Documentation
+
+- [eBPF Internals & Bytecode](./ebpf-internals.md) — Under-the-hood bytecode execution, ELF layout, and verifier requirements.
+- [ghostring User Daemon](./ghostring-user-daemon.md) — Application of Aya and `aya-poll` within the Tokio async user daemon.
+- [Perf Buffer Internals](./perf-buffer-internals.md) — Memory layouts and polling mechanics for `PerfEventArray` maps.
+- [BTF & CO-RE Deep Dive](./btf-co-re-deep-dive.md) — How Aya parses BTF metadata to perform CO-RE field relocations.
+- [Build System & Workspace](./build-system-workspace.md) — Multi-crate Cargo setup and `bpf-linker` build integration.
+- [License Compliance Deep Dive](./license-compliance-deep.md) — Aya helper licensing restrictions and GPLv3 verification.
+- [Troubleshooting Guide](./troubleshooting-guide.md) — Resolving Aya map loading, polling, and verifier rejection errors.

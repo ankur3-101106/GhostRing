@@ -232,3 +232,14 @@ dmesg | grep -i "verifier"
 - **bcc (BPF Compiler Collection)**: `bpf_trace` utilities
 - **bpftrace**: High-level tracing language
 - **verifier logs**: `dmesg` output on load failure
+
+## Related Documentation
+
+- [eBPF Fundamentals](./ebpf-fundamentals.md) — High-level concepts, probe points, and sandbox execution.
+- [Kernel Instrumentation](./kernel-instrumentation.md) — Attaching to tracepoints and kprobes from the kernel.
+- [Aya Framework](./aya-framework.md) — Rust wrapper around eBPF loading, maps, and helper bindings.
+- [BTF & CO-RE Deep Dive](./btf-co-re-deep-dive.md) — Type information relocations and CO-RE ELF sections.
+- [Perf Buffer Internals](./perf-buffer-internals.md) — Map mechanics for `PerfEventArray` and memory ring buffers.
+- [ghostring-common Struct Design](./ghostring-common-structs.md) — Struct alignment and serialization constraints within eBPF programs.
+- [License Compliance Deep Dive](./license-compliance-deep.md) — The `__license` section and kernel verifier helper restriction rules.
+- [Troubleshooting Guide](./troubleshooting-guide.md) — Diagnosing verifier failures, stack overflow, and opcode errors.

@@ -472,5 +472,12 @@ fn test_struct_invariants() {
 [ ] Documentation updated (prerequisites/ files in sync)
 ```
 
----
-*This document covers GhostRing testing strategy deep dive. For eBPF programming, see `prerequisites/ebpf-internals.md`. For Aya framework, see `prerequisites/aya-framework.md`. For struct definitions, see `prerequisites/ghostring-common-structs.md`. For build system, see `prerequisites/build-system-workspace.md`.*
+## Related Documentation
+
+- [Build System & Workspace](./build-system-workspace.md) — Multi-crate Cargo test commands, CI/CD workflows, and linter automation.
+- [ghostring-common Struct Design](./ghostring-common-structs.md) — Struct layout invariants, size checks, and alignment constraints.
+- [Perf Buffer Internals](./perf-buffer-internals.md) — Benchmark targets, throughput thresholds, and loss-rate testing.
+- [ghostring User Daemon](./ghostring-user-daemon.md) — CLI integration test harness and Tokio runtime testing.
+- [eBPF Internals & Bytecode](./ebpf-internals.md) — Verifier rules, bytecode instruction count testing, and mock tests.
+- [Development Environment](./development-environment.md) — Toolchain verification and test execution commands.
+- [Troubleshooting Guide](./troubleshooting-guide.md) — Diagnostic steps for test assertions, verifier rejections, and runtime panics.

@@ -27,17 +27,6 @@ The GhostRing telemetry pipeline transports eBPF-collected events from kernel sp
 - **Parsing**: Raw byte streams parsed back into high-level Rust structs
 - **Output**: Logging, auditing, alert routing, JSON export (planned)
 
-## Related Knowledge
-
-This file covers the event transport pipeline that connects many other knowledge base entries:
-
-- [[architecture-overview.md]]: Overall pipeline diagram and crate responsibilities
-- [[ghostring-common-structs.md]]: #[repr(C)] struct definitions for kernel↔user communication
-- [[ghostring-user-daemon.md]]: Tokio async polling implementation details
-- [[btf-co-re-deep-dive.md]]: BTF impact on struct layout and CO-RE compatibility
-- [[roadmap-features-deep.md]]: Roadmap features affecting transport (path extraction, network observability, FIM)
-- [[testing-strategy.md]]: Unit tests for struct layout invariants and integration tests
-
 ## `#[repr(C)]` Communication Structs
 
 Found in `ghostring-common`, these structs define the binary format:
@@ -49,9 +38,9 @@ pub struct ExecveEvent {
     pub pid: u32,           // Process ID
     pub ppid: u32,          // Parent process ID
     pub uid: u32,           // User ID
-    gid: u32,               // Group ID
-    flags: u64,             // Event flags
-    timestamp: u64,         // Nanosecond timestamp
+    pub gid: u32,           // Group ID
+    pub flags: u64,         // Event flags
+    pub timestamp: u64,     // Nanosecond timestamp
     // command[16]: truncated command name (roadmap: advanced path extraction)
 }
 ```
@@ -71,3 +60,14 @@ Since `PerfEventArray` uses per-CPU buffers:
 - **Head/tail pointers**: Track consumed/produced data
 - **Batch processing**: Pull multiple events per poll cycle
 - **Backpressure**: Handle full buffers (drop or block)
+
+## Related Documentation
+
+- [Perf Buffer Internals](./perf-buffer-internals.md) — Low-level ring buffer architecture, mmap header layouts, and pointer synchronization.
+- [ghostring-common Struct Design](./ghostring-common-structs.md) — `#[repr(C)]` struct definitions bridging kernel and user space.
+- [ghostring User Daemon](./ghostring-user-daemon.md) — Tokio async ingestion, per-CPU polling loops, and alert routing.
+- [Aya Framework](./aya-framework.md) — Aya map abstractions and `aya-poll` asynchronous polling engine.
+- [Architecture Overview](./architecture-overview.md) — End-to-end telemetry pipeline and workspace crate roles.
+- [BTF & CO-RE Deep Dive](./btf-co-re-deep-dive.md) — Impact of BTF on struct layout and cross-kernel binary compatibility.
+- [Testing Strategy](./testing-strategy.md) — Unit tests for struct alignment and integration benchmarks for throughput.
+- [Troubleshooting Guide](./troubleshooting-guide.md) — Resolving ring buffer overflows, lost events, and polling errors.

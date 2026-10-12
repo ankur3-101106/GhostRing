@@ -458,18 +458,17 @@ pub new_field: u32,
 - Migration guide documentation
 - Backward-compatible replacement
 
-## Related Knowledge
+## Related Documentation
 
-This struct design is central to many other knowledge base entries:
+- [Architecture Overview](./architecture-overview.md) — Workspace structure and crate segregation role of `ghostring-common`.
+- [Event Transport](./event-transport.md) — End-to-end telemetry pipeline utilizing `#[repr(C)]` event structs.
+- [Perf Buffer Internals](./perf-buffer-internals.md) — Struct alignment, padding, and binary packing within ring buffer memory pages.
+- [ghostring User Daemon](./ghostring-user-daemon.md) — Deserialization and processing of event structs in the Tokio daemon.
+- [BTF & CO-RE Deep Dive](./btf-co-re-deep-dive.md) — BTF type mapping and ABI compatibility across diverse kernel versions.
+- [Build System & Workspace](./build-system-workspace.md) — Workspace manifest and dependency management for `cdylib`/`staticlib` targets.
+- [License Compliance Deep Dive](./license-compliance-deep.md) — GPLv3 compliance considerations for shared data structures.
+- [Roadmap Features Deep Dive](./roadmap-features-deep.md) — Planned struct additions (`FileEvent`, `SocketEvent`) for future milestones.
+- [Testing Strategy](./testing-strategy.md) — Automated compile-time and runtime tests for struct layout and size invariants.
 
-- [[architecture-overview.md]]: Crate responsibility and workspace structure
-- [[event-transport.md]]: Kernel↔user communication via #[repr(C)] structs
-- [[development-environment.md]]: Prerequisites for working with this crate
-- [[btf-co-re-deep-dive.md]]: BTF and CO-RE compatibility considerations
-- [[build-system-workspace.md]]: Build pipeline and version management
-- [[license-compliance-deep.md]]: GPLv3 compliance for cdylib crate
-- [[roadmap-features-deep.md]]: Planned struct extensions (path extraction, etc.)
-- [[testing-strategy.md]]: Struct layout tests and ABI compliance
-- [[prerequisites/README.md]]: This vault index
 ---
-*This document is the authoritative source for `ghostring-common` struct design. All developers modifying shared structs must update this file.*
+*This document is the authoritative specification for `ghostring-common` struct design. Any changes to shared structs must be reflected here.*

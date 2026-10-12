@@ -97,6 +97,10 @@ ghostring/
 - File integrity monitoring (sys_enter_openat)
 - Structured JSON event export for SIEM integration
 
+## Git Commit Guidelines
+
+GhostRing enforces the Conventional Commits specification. Refer to [COMMIT.md](file:///c:/Users/Ankur/github/ghostring/COMMIT.md) for full instructions on commit message formatting, scopes, pre-commit validation gates, and push procedures.
+
 ## License
 
 This project is licensed under the GNU General Public License v3.0 (GPLv3). The Linux kernel eBPF verifier requires GPL‑compatible licensing for advanced BPF helper functions.

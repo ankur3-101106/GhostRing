@@ -430,5 +430,11 @@ e) Convey the object code using peer-to-peer transmission, provided
 
 **Result**: Data minimization practices reduce exfiltration risk.
 
----
-*This document covers the GhostRing security model deep dive. For eBPF programming, see `prerequisites/ebpf-internals.md`. For Aya framework, see `prerequisites/aya-framework.md`. For struct definitions, see `prerequisites/ghostring-common-structs.md`. For build system, see `prerequisites/build-system-workspace.md`.*
+## Related Documentation
+
+- [Security Requirements](./security-requirements.md) — Fundamental security objectives, zero-trust telemetry, and verification requirements.
+- [License Compliance Deep Dive](./license-compliance-deep.md) — GPLv3 compliance requirements and BPF verifier security gates.
+- [Kernel Instrumentation](./kernel-instrumentation.md) — Tamper-resistant Ring 0 execution interception.
+- [eBPF Fundamentals](./ebpf-fundamentals.md) — Sandboxed kernel execution and static verifier guarantees.
+- [Architecture Overview](./architecture-overview.md) — Privilege boundaries and multi-crate security isolation.
+- [Roadmap Features Deep Dive](./roadmap-features-deep.md) — Extending threat detection to reverse shells and file tampering.

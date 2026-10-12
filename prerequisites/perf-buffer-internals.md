@@ -520,5 +520,12 @@ async fn run_daemon() -> Result<(), Box<dyn std::error::Error>> {
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
----
-*This document covers PerfEventArray ring buffer internals for GhostRing. For eBPF programming, see `prerequisites/ebpf-internals.md`. For Aya framework, see `prerequisites/aya-framework.md`. For struct definitions, see `prerequisites/ghostring-common-structs.md`.*
+## Related Documentation
+
+- [Event Transport](./event-transport.md) — High-level telemetry pipeline architecture and data flow.
+- [ghostring User Daemon](./ghostring-user-daemon.md) — Tokio async event consumption and per-CPU ring polling loop.
+- [ghostring-common Struct Design](./ghostring-common-structs.md) — Event struct layouts, size alignment, and memory boundaries.
+- [Aya Framework](./aya-framework.md) — Aya map abstractions and `aya-poll` asynchronous polling engine.
+- [eBPF Internals & Bytecode](./ebpf-internals.md) — Bytecode level usage of `bpf_perf_event_output` and verifier constraints.
+- [Testing Strategy](./testing-strategy.md) — Throughput benchmarking and event loss testing across high-volume workloads.
+- [Troubleshooting Guide](./troubleshooting-guide.md) — Diagnosing buffer overflow, latency spikes, and missing perf events.

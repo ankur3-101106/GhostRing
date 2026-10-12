@@ -40,17 +40,6 @@ eBPF programs extract metadata using:
 - `bpf_ktime_get_ns()` - nanosecond timestamps
 - `bpf_get_current_comm()` - current process command name (16 bytes)
 
-## Related Knowledge
-
-This file covers Kernel Space instrumentation that connects to several other knowledge base entries:
-
-- [[ebpf-fundamentals.md]]: Foundational eBPF concepts and helpers
-- [[btf-co-re-deep-dive.md]]: Deep BTF and CO-RE portability mechanics
-- [[event-transport.md]]: How instrumented data travels from kernel to user space
-- [[architecture-overview.md]]: Overall workspace crate responsibilities
-- [[license-compliance-deep.md]]: GPLv3 requirement for kernel module loading
-- [[roadmap-features-deep.md]]: Roadmap feature: network socket observability via tcp_connect kprobes
-
 ## BTF (BPF Type Format)
 
 - **Preferred** for CO-RE (Compile Once, Run Everywhere) portability
@@ -65,3 +54,14 @@ This file covers Kernel Space instrumentation that connects to several other kno
 - Guarantees: memory safety, loop bounds, no infinite loops
 - Checks license compliance (GPLv3 requirement)
 - Must pass before eBPF program can be loaded into kernel
+
+## Related Documentation
+
+- [eBPF Fundamentals](./ebpf-fundamentals.md) — Foundational eBPF concepts, sandboxing, and helper constraints.
+- [eBPF Internals & Bytecode](./ebpf-internals.md) — ISA, context structures, registers, and verifier limits.
+- [BTF & CO-RE Deep Dive](./btf-co-re-deep-dive.md) — Deep dive into runtime type resolution and cross-kernel portability.
+- [Event Transport](./event-transport.md) — How instrumented data travels from Ring 0 to user space via ring buffers.
+- [ghostring-common Struct Design](./ghostring-common-structs.md) — C-compatible struct layouts for captured event serialization.
+- [Architecture Overview](./architecture-overview.md) — Overall workspace structure and crate responsibilities.
+- [License Compliance Deep Dive](./license-compliance-deep.md) — GPLv3 requirements for kernel tracing helpers.
+- [Roadmap Features Deep Dive](./roadmap-features-deep.md) — Specifications for network socket observability (`tcp_connect`) and File Integrity Monitoring (`sys_enter_openat`).

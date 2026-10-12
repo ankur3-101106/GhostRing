@@ -41,19 +41,6 @@ fn init_runtime() -> tokio::runtime::Runtime {
 | **Run** | Event loop, poll ring buffers, process events |
 | **Shutdown** | Graceful stop, unload eBPF, flush buffers |
 
-## Related Knowledge
-
-This daemon architecture connects to many other knowledge base entries:
-
-- [[architecture-overview.md]]: Crate responsibilities and pipeline overview
-- [[event-transport.md]]: Telemetry pipeline and PerfEventArray polling
-- [[aya-framework.md]]: Aya crate for eBPF program loading and ring buffer setup
-- [[build-system-workspace.md]]: Build pipeline and CI/CD configuration
-- [[testing-strategy.md]]: Integration and end-to-end testing approach
-- [[troubleshooting-guide.md]]: Common runtime issues and diagnostics
-- [[roadmap-features-deep.md]]: Roadmap features affecting daemon (JSON export, alert routing)
-- [[prerequisites/README.md]]: This vault index
-
 ## Ring Buffer Polling Implementation
 
 ### Per-CPU Iteration Strategy
@@ -583,5 +570,14 @@ fn panic_hook(info: &std::panic::PanicInfo) {
 }
 ```
 
----
-*This document covers the ghostring user-space daemon architecture. For eBPF program details, see `prerequisites/ebpf-internals.md`. For struct definitions, see `prerequisites/ghostring-common-structs.md`.*
+## Related Documentation
+
+- [Architecture Overview](./architecture-overview.md) — Workspace organization and user-space daemon responsibilities.
+- [Event Transport](./event-transport.md) — Ring 0 to Ring 3 event flow and buffer ingestion.
+- [Perf Buffer Internals](./perf-buffer-internals.md) — Low-level ring buffer layouts, head/tail pointer polling, and backpressure.
+- [ghostring-common Struct Design](./ghostring-common-structs.md) — Deserializing `#[repr(C)]` structs in user space without marshaling overhead.
+- [Aya Framework](./aya-framework.md) — Utilizing Aya and `aya-poll` for asynchronous ring buffer polling in Tokio.
+- [Build System & Workspace](./build-system-workspace.md) — Cargo dependencies, CLI build flags, and release packaging.
+- [Testing Strategy](./testing-strategy.md) — Integration test harnesses and end-to-end daemon verification.
+- [Roadmap Features Deep Dive](./roadmap-features-deep.md) — Structured JSON event export and multi-probe ingestion.
+- [Troubleshooting Guide](./troubleshooting-guide.md) — Debugging daemon permissions, CPU utilization, and dropped events.

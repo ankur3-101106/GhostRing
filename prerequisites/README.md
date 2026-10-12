@@ -1,110 +1,90 @@
-# GhostRing Knowledge Base
+# GhostRing Technical Documentation & Architecture Reference
 
-This directory contains a comprehensive deep knowledge base for the GhostRing repository, structured like an [Obsidian](https://obsidian.md/) vault with interlinked markdown files. Each file is cross-referenced with `[[filename]]` links for easy navigation.
-
-## Quick Navigation
-
-- [[ebpf-fundamentals.md]] - eBPF core concepts, helpers, maps, licensing
-- [[kernel-instrumentation.md]] - Ring 0 instrumentation, probe types, BTF/CO-RE
-- [[event-transport.md]] - Telemetry pipeline, PerfEventArray, ring buffers
-- [[architecture-overview.md]] - 3-crate workspace, responsibilities, pipeline diagram
-- [[development-environment.md]] - Prerequisites checklist, build workflow, troubleshooting
-- [[security-requirements.md]] - GPLv3 compliance, kernel vs user-space security
-- [[ebpf-internals.md]] - Instruction set, register usage, verifier, ELF layout
-- [[aya-framework.md]] - Aya crates, ELF loading, map abstractions, helper bindings
-- [[ghostring-common-structs.md]] - #[repr(C)] structs, C-compatible types, FFI bridge
-- [[ghostring-user-daemon.md]] - Tokio async architecture, ring polling, CLI, logging
-- [[btf-co-re-deep-dive.md]] - BTF format, CO-RE mechanics, type resolution
-- [[build-system-workspace.md]] - Cargo workspace, build pipeline, CI/CD, Docker
-- [[license-compliance-deep.md]] - GPLv3 and kernel verifier, helper categorization
-- [[roadmap-features-deep.md]] - 3 features: path extraction, network obs, FIM
-- [[security-model-deep-dive.md]] - Threat model, defense-in-depth, attack analysis
-- [[testing-strategy.md]] - 4-layer testing pyramid, CI/CD gates, benchmarking
-- [[troubleshooting-guide.md]] - 19 common build/runtime issues with fixes
-
-## Detailed Index
-
-### Foundational Knowledge
-- [[ebpf-fundamentals.md]] - eBPF fundamentals for GhostRing
-- [[kernel-instrumentation.md]] - Kernel space instrumentation details
-- [[event-transport.md]] - Event transport and PerfEventArray internals
-- [[architecture-overview.md]] - Overall workspace architecture
-- [[development-environment.md]] - Development environment setup
-- [[security-requirements.md]] - Security requirements and concerns
-
-### Deep Technical Knowledge
-- [[ebpf-internals.md]] - eBPF bytecode internals and verification
-- [[aya-framework.md]] - Aya framework deep dive
-- [[ghostring-common-structs.md]] - ghostring-common struct design
-- [[ghostring-user-daemon.md]] - User-space daemon architecture
-- [[btf-co-re-deep-dive.md]] - BTF and CO-RE detailed analysis
-- [[build-system-workspace.md]] - Build system and workspace configuration
-- [[license-compliance-deep.md]] - License compliance deep dive
-- [[roadmap-features-deep.md]] - Roadmap features with implementation details
-- [[security-model-deep-dive.md]] - Security model analysis
-- [[testing-strategy.md]] - Testing strategy and CI/CD
-
-### Operational Knowledge
-- [[testing-strategy.md]] - Testing strategy
-- [[troubleshooting-guide.md]] - Troubleshooting guide
-
-## Cross-Reference Map
-
-### Foundational ←→ Deep Technical
-- [[ebpf-fundamentals.md]] ←→ [[ebpf-internals.md]]: eBPF concepts → bytecode internals
-- [[kernel-instrumentation.md]] ←→ [[btf-co-re-deep-dive.md]]: Instrumentation → BTF/CO-RE
-- [[event-transport.md]] ←→ [[perf-buffer-internals.md]] (if present): Pipeline → buffer details
-- [[architecture-overview.md]] ←→ [[aya-framework.md]] ←→ [[ghostring-common-structs.md]]: Architecture → framework → structs
-
-### Deep Technical ←→ License/Compliance
-- [[aya-framework.md]] ←→ [[license-compliance-deep.md]]: Aya helpers → GPLv3 requirements
-- [[ghostring-common-structs.md]] ←→ [[license-compliance-deep.md]]: Struct design → license implications
-- [[build-system-workspace.md]] ←→ [[license-compliance-deep.md]]: Build → license enforcement
-
-### Roadmap ←→ Technical Knowledge
-- [[roadmap-features-deep.md]] ←→ [[ebpf-internals.md]]: Features → eBPF internals
-- [[roadmap-features-deep.md]] ←→ [[ghostring-common-structs.md]]: Feature struct changes → struct design
-- [[roadmap-features-deep.md]] ←→ [[aya-framework.md]]: Feature implementation → Aya usage
-- [[roadmap-features-deep.md]] ←→ [[build-system-workspace.md]]: Feature builds → CI/CD
-
-### Security ←→ License/Compliance
-- [[security-model-deep-dive.md]] ←→ [[license-compliance-deep.md]]: Threat model → license requirements
-- [[security-requirements.md]] ←→ [[license-compliance-deep.md]]: Security requirements → compliance details
-
-### Testing ←→ All Knowledge Areas
-- [[testing-strategy.md]] ←→ [[build-system-workspace.md]]: Testing → build pipeline
-- [[testing-strategy.md]] ←→ [[roadmap-features-deep.md]]: Testing → roadmap features
-- [[testing-strategy.md]] ←→ [[troubleshooting-guide.md]]: Testing → issue resolution
-
-## How to Use This Knowledge Base
-
-1. **Start here** if new to GhostRing: [[development-environment.md]] → [[architecture-overview.md]] → [[ebpf-fundamentals.md]]
-2. **For specific topics**: Use the quick navigation above or search with `[[filename]]`
-3. **For roadmap implementation**: Start with [[roadmap-features-deep.md]], then follow links to relevant technical files
-4. **For troubleshooting**: Use [[troubleshooting-guide.md]] with cross-references to build/runtime files
-5. **For license questions**: Refer to [[license-compliance-deep.md]] and [[security-requirements.md]]
-
-## Link Syntax
-
-This vault uses standard Obsidian wikilink syntax:
-- `[[filename.md]]` - creates a link to the file (relative to the prerequisites/ directory)
-- Links work best when viewing in Obsidian, VS Code with markdown preview, or any markdown reader that supports wikilinks
-- The link text displays as the filename, making navigation intuitive
-
-## File Relationship Summary
-
-| Category | Key File | Links Out | Links In |
-|---|---|---|---|
-| **Foundational** | `architecture-overview.md` | 6+ | 1+ |
-| **Deep Technical** | `aya-framework.md` | 8+ | 3+ |
-| **Structs** | `ghostring-common-structs.md` | 5+ | 3+ |
-| **Roadmap** | `roadmap-features-deep.md` | 10+ | 5+ |
-| **License** | `license-compliance-deep.md` | 5+ | 3+ |
-| **Security** | `security-model-deep-dive.md` | 4+ | 2+ |
-| **Testing** | `testing-strategy.md` | 5+ | 3+ |
-| **Troubleshooting** | `troubleshooting-guide.md` | 0+ | 5+ |
-
-*Numbers represent approximate link count in each direction.*
+This directory serves as the technical documentation suite and architecture reference for the GhostRing repository. It provides comprehensive specifications across kernel-space eBPF instrumentation, data transport mechanisms, user-space daemon operations, security and licensing compliance, and development workflows.
 
 ---
-*This README serves as the vault index for the GhostRing knowledge base. All files use `[[wikilink]]` syntax for cross-referencing. For best experience, view in Obsidian or a markdown reader that supports wikilinks.*
+
+## Documentation Index
+
+### 1. Foundational Architecture & Environment
+
+- [Architecture Overview](./architecture-overview.md) — Comprehensive overview of the 3-crate workspace architecture, crate boundaries, and end-to-end telemetry pipeline.
+- [Development Environment](./development-environment.md) — System requirements (Linux 5.8+, BTF), Rust Nightly toolchain setup, build dependencies, and environment verification.
+- [eBPF Fundamentals](./ebpf-fundamentals.md) — Core eBPF principles, execution model, probe types, memory safety, and kernel verifier requirements.
+- [Kernel Instrumentation](./kernel-instrumentation.md) — Ring 0 execution path interception, tracepoints, kprobes, context extraction, and kernel safety guarantees.
+
+### 2. Kernel Space & eBPF Engineering
+
+- [eBPF Internals & Bytecode](./ebpf-internals.md) — eBPF instruction set architecture (ISA), register conventions, verifier static analysis, ELF layout, and JIT compilation.
+- [Aya Framework](./aya-framework.md) — Deep dive into the pure-Rust Aya ecosystem (`aya`, `aya-ebpf`, `aya-poll`), ELF loading, map abstractions, and helper bindings.
+- [BTF & CO-RE Deep Dive](./btf-co-re-deep-dive.md) — BPF Type Format (BTF) structure, Compile Once, Run Everywhere (CO-RE) field relocations, and kernel portability.
+- [ghostring-common Struct Design](./ghostring-common-structs.md) — C-compatible `#[repr(C)]` memory layouts, alignment constraints, scalar type mappings, and cross-boundary ABI stability.
+
+### 3. Telemetry & User Space Pipeline
+
+- [Event Transport](./event-transport.md) — Telemetry transmission mechanics from Ring 0 to user space via `PerfEventArray` ring buffers.
+- [Perf Buffer Internals](./perf-buffer-internals.md) — Low-level ring buffer memory layout, mmap headers, head/tail pointer synchronization, per-CPU ring handling, and backpressure management.
+- [ghostring User Daemon](./ghostring-user-daemon.md) — Asynchronous Tokio daemon architecture, per-CPU buffer polling loop, CLI options, event filtering, and structured logging.
+
+### 4. Security, Compliance & Governance
+
+- [Security Requirements](./security-requirements.md) — Ring 0 zero-trust observability advantages, tamper resistance, and kernel licensing requirements.
+- [Security Model Deep Dive](./security-model-deep-dive.md) — Threat model, evasion countermeasures, kernel rootkit resistance, and defense-in-depth principles.
+- [License Compliance Deep Dive](./license-compliance-deep.md) — GNU General Public License v3.0 (GPLv3) compliance analysis, Linux kernel verifier license checking, and BPF helper access.
+
+### 5. Quality Assurance, Operations & Roadmap
+
+- [Build System & Workspace](./build-system-workspace.md) — Root Cargo workspace configuration, compilation targets (`bpfel-unknown-none`), `bpf-linker` integration, and CI/CD pipelines.
+- [Testing Strategy](./testing-strategy.md) — Four-layer testing pyramid (unit, struct layout, integration, and E2E testing), benchmark suites, and release quality gates.
+- [Troubleshooting Guide](./troubleshooting-guide.md) — Diagnostic workflows and solutions for 19 common build, verifier, permission, and runtime errors.
+- [Roadmap Features Deep Dive](./roadmap-features-deep.md) — Architectural blueprints for advanced path extraction (`bpf_probe_read_user_str`), socket observability (`tcp_connect`), and File Integrity Monitoring (`sys_enter_openat`).
+
+---
+
+## Cross-Reference Matrix
+
+The documentation suite is designed with interconnected references across architectural boundaries:
+
+| Category | Primary Reference | Directly Related Documents |
+|---|---|---|
+| **Architecture** | [Architecture Overview](./architecture-overview.md) | [eBPF Fundamentals](./ebpf-fundamentals.md), [Event Transport](./event-transport.md), [ghostring-common Structs](./ghostring-common-structs.md), [ghostring User Daemon](./ghostring-user-daemon.md) |
+| **Kernel Probes** | [Kernel Instrumentation](./kernel-instrumentation.md) | [eBPF Internals](./ebpf-internals.md), [BTF & CO-RE](./btf-co-re-deep-dive.md), [Aya Framework](./aya-framework.md), [License Compliance](./license-compliance-deep.md) |
+| **Data Transport** | [Event Transport](./event-transport.md) | [Perf Buffer Internals](./perf-buffer-internals.md), [ghostring-common Structs](./ghostring-common-structs.md), [ghostring User Daemon](./ghostring-user-daemon.md) |
+| **Data Structures** | [ghostring-common Structs](./ghostring-common-structs.md) | [Event Transport](./event-transport.md), [BTF & CO-RE](./btf-co-re-deep-dive.md), [Testing Strategy](./testing-strategy.md), [Roadmap Features](./roadmap-features-deep.md) |
+| **User Daemon** | [ghostring User Daemon](./ghostring-user-daemon.md) | [Aya Framework](./aya-framework.md), [Perf Buffer Internals](./perf-buffer-internals.md), [Build System](./build-system-workspace.md), [Troubleshooting](./troubleshooting-guide.md) |
+| **Portability** | [BTF & CO-RE Deep Dive](./btf-co-re-deep-dive.md) | [eBPF Internals](./ebpf-internals.md), [Aya Framework](./aya-framework.md), [Kernel Instrumentation](./kernel-instrumentation.md) |
+| **Licensing** | [License Compliance Deep Dive](./license-compliance-deep.md) | [Security Requirements](./security-requirements.md), [eBPF Internals](./ebpf-internals.md), [Build System](./build-system-workspace.md) |
+| **Build & Toolchain** | [Build System & Workspace](./build-system-workspace.md) | [Development Environment](./development-environment.md), [Testing Strategy](./testing-strategy.md), [Troubleshooting](./troubleshooting-guide.md) |
+| **Threat Modeling** | [Security Model Deep Dive](./security-model-deep-dive.md) | [Security Requirements](./security-requirements.md), [Kernel Instrumentation](./kernel-instrumentation.md), [Roadmap Features](./roadmap-features-deep.md) |
+| **Quality & Tests** | [Testing Strategy](./testing-strategy.md) | [Build System](./build-system-workspace.md), [ghostring-common Structs](./ghostring-common-structs.md), [Troubleshooting](./troubleshooting-guide.md) |
+| **Future Scope** | [Roadmap Features Deep Dive](./roadmap-features-deep.md) | [Kernel Instrumentation](./kernel-instrumentation.md), [ghostring-common Structs](./ghostring-common-structs.md), [ghostring User Daemon](./ghostring-user-daemon.md) |
+
+---
+
+## Recommended Reading Paths
+
+### 1. New Contributor Onboarding
+1. [Development Environment](./development-environment.md) — Set up required kernel headers, Nightly Rust, and `bpf-linker`.
+2. [Architecture Overview](./architecture-overview.md) — Understand crate segregation and system data flow.
+3. [eBPF Fundamentals](./ebpf-fundamentals.md) — Review kernel execution model and safety guarantees.
+4. [Build System & Workspace](./build-system-workspace.md) — Learn how to build and run the complete workspace.
+
+### 2. Kernel & eBPF Engineers
+1. [Kernel Instrumentation](./kernel-instrumentation.md) — Tracepoint and probe mechanics.
+2. [eBPF Internals & Bytecode](./ebpf-internals.md) — ISA, stack limitations, and verifier rules.
+3. [Aya Framework](./aya-framework.md) — aya-ebpf bindings and helper invocations.
+4. [BTF & CO-RE Deep Dive](./btf-co-re-deep-dive.md) — Cross-kernel struct relocations.
+5. [License Compliance Deep Dive](./license-compliance-deep.md) — GPLv3 requirements for helper access.
+
+### 3. Systems & Daemon Developers
+1. [ghostring User Daemon](./ghostring-user-daemon.md) — Tokio async loop and poller design.
+2. [Event Transport](./event-transport.md) — Data ingestion pipeline from kernel space.
+3. [Perf Buffer Internals](./perf-buffer-internals.md) — Memory layouts, header structs, and per-CPU ring handling.
+4. [ghostring-common Struct Design](./ghostring-common-structs.md) — `#[repr(C)]` struct definitions and ABI stability.
+5. [Testing Strategy](./testing-strategy.md) — Integration test patterns and release validation.
+
+### 4. Security Architects & Auditors
+1. [Security Requirements](./security-requirements.md) — Kernel vs. user-space threat posture.
+2. [Security Model Deep Dive](./security-model-deep-dive.md) — Threat matrix and defense-in-depth guarantees.
+3. [License Compliance Deep Dive](./license-compliance-deep.md) — GPLv3 legal and verifier audit trail.
+4. [Roadmap Features Deep Dive](./roadmap-features-deep.md) — Network monitoring and File Integrity Monitoring (FIM).

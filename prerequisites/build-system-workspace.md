@@ -508,5 +508,14 @@ cargo build --package ghostring-ebpf  # (no --release flag)
 tokio::time::sleep(std::time::Duration::from_millis(1)).await;
 ```
 
----
-*This document covers the GhostRing build system and workspace configuration. For eBPF programming details, see `prerequisites/ebpf-internals.md`. For struct definitions, see `prerequisites/ghostring-common-structs.md`. For daemon architecture, see `prerequisites/ghostring-user-daemon.md`.*
+## Related Documentation
+
+- [Development Environment](./development-environment.md) — Toolchain requirements, Rust Nightly installation, and system utilities.
+- [Architecture Overview](./architecture-overview.md) — Workspace layout and crate boundary responsibilities.
+- [eBPF Internals & Bytecode](./ebpf-internals.md) — Compilation target `bpfel-unknown-none` and `bpf-linker` ELF layout.
+- [ghostring-common Struct Design](./ghostring-common-structs.md) — C-compatible struct layouts and ABI versioning.
+- [ghostring User Daemon](./ghostring-user-daemon.md) — Tokio user-space daemon build and runtime configurations.
+- [Aya Framework](./aya-framework.md) — Dependency specification and integration with the Aya framework ecosystem.
+- [License Compliance Deep Dive](./license-compliance-deep.md) — Linking `--license=GPLv3` in `build.rs` to satisfy kernel verifier checks.
+- [Testing Strategy](./testing-strategy.md) — Cargo workspace test runs, clippy checks, and automated CI/CD gates.
+- [Troubleshooting Guide](./troubleshooting-guide.md) — Resolving compiler errors, linker flags, and target mismatch issues.
