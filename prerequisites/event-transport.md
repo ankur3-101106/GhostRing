@@ -27,6 +27,17 @@ The GhostRing telemetry pipeline transports eBPF-collected events from kernel sp
 - **Parsing**: Raw byte streams parsed back into high-level Rust structs
 - **Output**: Logging, auditing, alert routing, JSON export (planned)
 
+## Related Knowledge
+
+This file covers the event transport pipeline that connects many other knowledge base entries:
+
+- [[architecture-overview.md]]: Overall pipeline diagram and crate responsibilities
+- [[ghostring-common-structs.md]]: #[repr(C)] struct definitions for kernel↔user communication
+- [[ghostring-user-daemon.md]]: Tokio async polling implementation details
+- [[btf-co-re-deep-dive.md]]: BTF impact on struct layout and CO-RE compatibility
+- [[roadmap-features-deep.md]]: Roadmap features affecting transport (path extraction, network observability, FIM)
+- [[testing-strategy.md]]: Unit tests for struct layout invariants and integration tests
+
 ## `#[repr(C)]` Communication Structs
 
 Found in `ghostring-common`, these structs define the binary format:

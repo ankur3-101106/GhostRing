@@ -458,5 +458,18 @@ pub new_field: u32,
 - Migration guide documentation
 - Backward-compatible replacement
 
+## Related Knowledge
+
+This struct design is central to many other knowledge base entries:
+
+- [[architecture-overview.md]]: Crate responsibility and workspace structure
+- [[event-transport.md]]: Kernel↔user communication via #[repr(C)] structs
+- [[development-environment.md]]: Prerequisites for working with this crate
+- [[btf-co-re-deep-dive.md]]: BTF and CO-RE compatibility considerations
+- [[build-system-workspace.md]]: Build pipeline and version management
+- [[license-compliance-deep.md]]: GPLv3 compliance for cdylib crate
+- [[roadmap-features-deep.md]]: Planned struct extensions (path extraction, etc.)
+- [[testing-strategy.md]]: Struct layout tests and ABI compliance
+- [[prerequisites/README.md]]: This vault index
 ---
 *This document is the authoritative source for `ghostring-common` struct design. All developers modifying shared structs must update this file.*

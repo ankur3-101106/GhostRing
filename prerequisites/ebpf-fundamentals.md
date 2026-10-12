@@ -44,3 +44,13 @@ The Linux kernel eBPF verifier checks the program's license section. If the prog
 - `bpf_probe_read_user_str` - safe user memory reading (roadmap item)
 - `bpf_get_current_pid_tgid` - process IDs
 - `bpf_get_current_uid_gid` - user identifiers
+
+## Related Knowledge
+
+This file forms the foundation for several other knowledge base entries:
+
+- [[kernel-instrumentation.md]]: Builds on these concepts for Ring 0 instrumentation
+- [[development-environment.md]]: Prerequisites for compiling eBPF bytecode
+- [[btf-co-re-deep-dive.md]]: BTF and CO-RE portability mechanics
+- [[license-compliance-deep.md]]: GPLv3 requirement for helper access
+- [[roadmap-features-deep.md]]: Roadmap feature: advanced path extraction via `bpf_probe_read_user_str`

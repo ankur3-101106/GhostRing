@@ -40,6 +40,17 @@ eBPF programs extract metadata using:
 - `bpf_ktime_get_ns()` - nanosecond timestamps
 - `bpf_get_current_comm()` - current process command name (16 bytes)
 
+## Related Knowledge
+
+This file covers Kernel Space instrumentation that connects to several other knowledge base entries:
+
+- [[ebpf-fundamentals.md]]: Foundational eBPF concepts and helpers
+- [[btf-co-re-deep-dive.md]]: Deep BTF and CO-RE portability mechanics
+- [[event-transport.md]]: How instrumented data travels from kernel to user space
+- [[architecture-overview.md]]: Overall workspace crate responsibilities
+- [[license-compliance-deep.md]]: GPLv3 requirement for kernel module loading
+- [[roadmap-features-deep.md]]: Roadmap feature: network socket observability via tcp_connect kprobes
+
 ## BTF (BPF Type Format)
 
 - **Preferred** for CO-RE (Compile Once, Run Everywhere) portability

@@ -67,3 +67,23 @@ ghostring/
 | **Safety** | `no_std` in eBPF crate; minimal `unsafe` only for FFI boundaries |
 | **Kernel Version** | 5.8+ with BTF enabled for optimal flexibility |
 | **Rust Toolchain** | Nightly with `rust-src` component |
+
+## Related Knowledge
+
+This overview connects all the knowledge base entries:
+
+- [[ebpf-fundamentals.md]]: eBPF core concepts underlying the architecture
+- [[kernel-instrumentation.md]]: Ring 0 instrumentation details
+- [[event-transport.md]]: Full telemetry pipeline implementation
+- [[development-environment.md]]: Prerequisites for getting started
+- [[ghostring-common-structs.md]]: C-compatible struct design for kernel↔user communication
+- [[ghostring-ebpf.md]]: eBPF crate (no_std, bpfel-unknown-none) — *note: referenced conceptually*
+- [[ghostring-user-daemon.md]]: User-space daemon (std, Tokio async)
+- [[aya-framework.md]]: Aya crate for eBPF program loading and attachment
+- [[btf-co-re-deep-dive.md]]: BTF and CO-RE portability mechanism
+- [[build-system-workspace.md]]: Cargo workspace and build pipeline configuration
+- [[license-compliance-deep.md]]: GPLv3 requirement and kernel verifier
+- [[roadmap-features-deep.md]]: Planned feature extensions
+- [[security-model-deep-dive.md]]: Security model and threat analysis
+- [[testing-strategy.md]]: Testing approach and CI/CD gates
+- [[troubleshooting-guide.md]]: Common issues and resolutions
