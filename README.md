@@ -110,3 +110,12 @@ GhostRing is distributed under the terms of the **GNU General Public License v3.
 ### Crucial Technical Compliance Note
 
 The Linux kernel enforces a strict licensing check via its eBPF verifier. When an eBPF program is loaded into the kernel address space, the verifier inspects the program's license section. If the program is not explicitly declared as GPL-compatible, the kernel restricts access to advanced BPF helper functions (such as deep memory-reading utilities and tracing helpers). Licensing the entire codebase under GPLv3 ensures 100% binary compatibility with the Linux kernel subsystem.
+
+---
+
+## Community & Governance
+
+* [Contributing Guide](CONTRIBUTING.md) — Git workflow, isolated build environment usage, and PR submission gates.
+* [Code of Conduct](CODE_OF_CONDUCT.md) — Standards of engagement and community expectations (Contributor Covenant v2.1).
+* [Security Policy](SECURITY.md) — Vulnerability disclosure process and security contact information.
+* [Commit Standards](COMMIT.md) — Conventional Commits 1.0.0 rules and repository scopes.
