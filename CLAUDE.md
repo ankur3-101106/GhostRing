@@ -99,7 +99,7 @@ ghostring/
 
 ## Git Commit Guidelines
 
-GhostRing enforces the Conventional Commits specification. Refer to [COMMIT.md](file:///c:/Users/Ankur/github/ghostring/COMMIT.md) for full instructions on commit message formatting, scopes, pre-commit validation gates, and push procedures.
+GhostRing enforces the Conventional Commits specification. Refer to [COMMIT.md](COMMIT.md) for full instructions on commit message formatting, scopes, pre-commit validation gates, and push procedures.
 
 ## License
 

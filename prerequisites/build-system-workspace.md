@@ -89,7 +89,8 @@ json-export = ["serde"]
 
 ## Build Commands and Workflow
 
-### Three-Step Build Process
+> [!TIP]
+> **Isolated Environment Execution**: Always activate the isolated in-repository build environment (`source .build-env/activate`) or prefix commands with `./.build-env/run.sh` to ensure `rustc` nightly and `bpf-linker` are utilized.
 
 #### Step 1: Build eBPF Bytecode
 
