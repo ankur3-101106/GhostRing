@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.svg" alt="GhostRing Logo" width="800" />
+</p>
+
 # GhostRing: Real-Time eBPF Kernel Security Observer
 
 **GhostRing** is a high-performance, ultra-low-overhead Linux security observability and threat detection daemon. Built entirely in Rust using the pure-Rust [Aya framework](https://aya-rs.dev/), GhostRing instruments the Linux kernel at Ring 0 via eBPF (Extended Berkeley Packet Filter). By intercepting critical system calls directly within the kernel execution path, GhostRing delivers zero-trust telemetry that remains completely invisible to user-space tampering, rootkits, and process-hiding techniques.
