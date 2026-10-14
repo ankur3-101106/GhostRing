@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="GhostRing Logo" width="800" />
+  <img src="assets/logo.svg" alt="GhostRing Logo" width="190" />
 </p>
 
 # GhostRing: Real-Time eBPF Kernel Security Observer
