@@ -36,7 +36,7 @@ git clone https://github.com/ankur3-101106/GhostRing.git
 cd GhostRing
 
 # Run the automated setup script
-./scripts/setup-env.sh
+./docs/scripts/setup-env.sh
 ```
 
 ### Activating the Isolated Environment

@@ -15,10 +15,10 @@ from pygments.lexers import get_lexer_by_name, TextLexer
 from pygments.formatters import HtmlFormatter
 
 # Base paths
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-DOCS_DIR = os.path.join(ROOT_DIR, "docs")
+DOCS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+ROOT_DIR = os.path.abspath(os.path.join(DOCS_DIR, ".."))
 ASSETS_DIR = os.path.join(DOCS_DIR, "assets")
-SOURCES_DIR = os.path.join(ROOT_DIR, "scripts", "doc_sources")
+SOURCES_DIR = os.path.join(os.path.dirname(__file__), "doc_sources")
 
 # Documentation categories in canonical reading order
 DOC_CATEGORIES = [

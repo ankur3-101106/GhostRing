@@ -23,11 +23,12 @@ GhostRing/
 │   └── rustup/                     # Isolated RUSTUP_HOME
 │       └── toolchains/
 │           └── nightly-x86_64-*/   # Nightly rustc, rust-src, cargo, clippy, rustfmt
-├── scripts/
-│   └── setup-env.sh                # Automated zero-friction environment bootstrap script
-├── .gitignore                      # Enforces exclusion of .build-env/
-└── docs/
-    └── development-environment.md  # This document
+├── docs/
+│   ├── scripts/
+│   │   ├── setup-env.sh            # Automated zero-friction environment bootstrap script
+│   │   └── build_docs.py           # Documentation generator
+│   └── *.html                      # Technical documentation suite
+└── .gitignore                      # Enforces exclusion of .build-env/
 ```
 
 ### Environment Isolation Invariants
@@ -57,7 +58,7 @@ The repository includes an automated setup script that creates and validates the
 
 ```bash
 # From repository root:
-./scripts/setup-env.sh
+./docs/scripts/setup-env.sh
 ```
 
 ### What the Setup Script Performs
@@ -215,7 +216,7 @@ deactivate_ghostring 2>/dev/null || true
 rm -rf .build-env/
 
 # 3. Re-run setup
-./scripts/setup-env.sh
+./docs/scripts/setup-env.sh
 ```
 
 ---

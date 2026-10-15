@@ -9,7 +9,7 @@ This directory serves as the technical documentation suite and architecture refe
 ### 1. Foundational Architecture & Environment
 
 - [Architecture Overview](./architecture-overview.md) — Comprehensive overview of the 3-crate workspace architecture, crate boundaries, and end-to-end telemetry pipeline.
-- [Development Environment & Isolated Build System](./development-environment.md) — System requirements (Linux 5.8+, BTF), in-repository isolated toolchain (`.build-env/`), automated bootstrap script (`scripts/setup-env.sh`), and verification.
+- [Development Environment & Isolated Build System](./development-environment.md) — System requirements (Linux 5.8+, BTF), in-repository isolated toolchain (`.build-env/`), automated bootstrap script (`docs/scripts/setup-env.sh`), and verification.
 - [eBPF Fundamentals](./ebpf-fundamentals.md) — Core eBPF principles, execution model, probe types, memory safety, and kernel verifier requirements.
 - [Kernel Instrumentation](./kernel-instrumentation.md) — Ring 0 execution path interception, tracepoints, kprobes, context extraction, and kernel safety guarantees.
 

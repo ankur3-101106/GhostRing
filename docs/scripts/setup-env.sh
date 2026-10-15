@@ -6,7 +6,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ENV_DIR="$PROJECT_ROOT/.build-env"
 RUSTUP_DIR="$ENV_DIR/rustup"
 CARGO_DIR="$ENV_DIR/cargo"

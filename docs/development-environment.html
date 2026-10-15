@@ -297,11 +297,12 @@
 │   └── rustup/                     # Isolated RUSTUP_HOME
 │       └── toolchains/
 │           └── nightly-x86_64-*/   # Nightly rustc, rust-src, cargo, clippy, rustfmt
-├── scripts/
-│   └── setup-env.sh                # Automated zero-friction environment bootstrap script
-├── .gitignore                      # Enforces exclusion of .build-env/
-└── docs/
-    └── development-environment.md  # This document
+├── docs/
+│   ├── scripts/
+│   │   ├── setup-env.sh            # Automated zero-friction environment bootstrap script
+│   │   └── build_docs.py           # Documentation generator
+│   └── *.html                      # Technical documentation suite
+└── .gitignore                      # Enforces exclusion of .build-env/
 </code></pre>
 </div>
 <h3 id="environment-isolation-invariants">Environment Isolation Invariants <a href="#environment-isolation-invariants" class="heading-anchor" aria-label="Permalink to Environment Isolation Invariants">#</a></h3>
@@ -365,7 +366,7 @@
     </button>
   </div>
   <pre class="highlight-pre"><code><span class="c1"># From repository root:</span>
-./scripts/setup-env.sh
+./docs/scripts/setup-env.sh
 </code></pre>
 </div>
 <h3 id="what-the-setup-script-performs">What the Setup Script Performs <a href="#what-the-setup-script-performs" class="heading-anchor" aria-label="Permalink to What the Setup Script Performs">#</a></h3>
@@ -609,7 +610,7 @@ deactivate_ghostring<span class="w"> </span><span class="m">2</span>&gt;/dev/nul
 rm<span class="w"> </span>-rf<span class="w"> </span>.build-env/
 
 <span class="c1"># 3. Re-run setup</span>
-./scripts/setup-env.sh
+./docs/scripts/setup-env.sh
 </code></pre>
 </div>
 <hr />

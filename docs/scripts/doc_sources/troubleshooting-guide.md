@@ -107,7 +107,7 @@ tar -I zstd -xf /tmp/bpf-linker.tar.zst -C .build-env/cargo/bin/
 chmod +x .build-env/cargo/bin/bpf-linker
 rm -f /tmp/bpf-linker.tar.zst
 ```
-Alternatively, run `./scripts/setup-env.sh` to refresh the isolated build environment.
+Alternatively, run `./docs/scripts/setup-env.sh` to refresh the isolated build environment.
 
 ---
 

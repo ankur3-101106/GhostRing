@@ -35,7 +35,7 @@ GhostRing uses an isolated in-repository build environment (`.build-env/`) so ho
 ```bash
 git clone https://github.com/ankur3-101106/GhostRing.git
 cd GhostRing
-./scripts/setup-env.sh
+./docs/scripts/setup-env.sh
 source .build-env/activate
 ```
 
