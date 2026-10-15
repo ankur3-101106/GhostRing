@@ -26,7 +26,7 @@ GhostRing/
 ├── scripts/
 │   └── setup-env.sh                # Automated zero-friction environment bootstrap script
 ├── .gitignore                      # Enforces exclusion of .build-env/
-└── prerequisites/
+└── docs/
     └── development-environment.md  # This document
 ```
 

@@ -213,7 +213,7 @@ fn handle_execve_event(raw: &[u8]) {
 - [ ] Update user-daemon polling to handle larger struct
 - [ ] Add backward compatibility version field
 - [ ] Bump crate version (major for breaking change)
-- [ ] Update documentation (`prerequisites/`)
+- [ ] Update documentation (`docs/`)
 - [ ] Test on target kernel (5.8+)
 - [ ] Benchmark performance impact
 - [ ] Add roadmap checkbox `[x]`
@@ -444,7 +444,7 @@ fn classify_network_event(
 - [ ] Benchmark performance on target workloads
 - [ ] Test with various connection types (tcp, udp)
 - [ ] Update roadmap checkboxes
-- [ ] Document in `prerequisites/`
+- [ ] Document in `docs/`
 
 ---
 
@@ -700,7 +700,7 @@ impl Event {
 - [ ] Add CLI flags for sensitive path configuration
 - [ ] Update `build.rs` license (already GPLv3)
 - [ ] Bump crate versions as needed
-- [ ] Update documentation (`prerequisites/`)
+- [ ] Update documentation (`docs/`)
 - [ ] Test on target kernel (5.15+ recommended)
 - [ ] Benchmark syscall overhead
 - [ ] Add roadmap checkboxes

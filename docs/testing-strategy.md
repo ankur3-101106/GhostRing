@@ -469,7 +469,7 @@ fn test_struct_invariants() {
 [ ] GitHub Actions workflow passes on push/PR
 [ ] Manual test: sudo -E cargo run --release produces events
 [ ] No breaking changes without version bump
-[ ] Documentation updated (prerequisites/ files in sync)
+[ ] Documentation updated (docs/ files in sync)
 ```
 
 ## Related Documentation

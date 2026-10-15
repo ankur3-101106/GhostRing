@@ -430,7 +430,7 @@ Before committing struct changes to `ghostring-common`:
 3. ✅ No `Option`, `Result`, `Vec`, `Box`, or other Rust types
 4. ✅ `static_assertions` or `const` size checks pass
 5. ✅ Both `cargo build` and `cargo build --release` produce same layout
-6. ✅ No changes without updating `prerequisites/` documentation
+6. ✅ No changes without updating `docs/` documentation
 
 ## Deprecation and Removal Policy
 
@@ -449,7 +449,7 @@ pub new_field: u32,
 
 1. **Bump major version** (0.x.y → 1.0.0 or 1.x.0 → 2.0.0)
 2. **Update all consumers** (both `ghostring-common` dependents)
-3. **Update documentation** (`prerequisites/`)
+3. **Update documentation** (`docs/`)
 4. **Add compatibility shim** if temporary support needed
 
 ### Never Remove Without:

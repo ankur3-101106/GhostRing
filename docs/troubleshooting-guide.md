@@ -570,7 +570,7 @@ cargo test -p ghostring-common -- test_struct_sizes
 #    - ghostring-ebpf: rebuild eBPF bytecode
 #    - ghostring: rebuild user daemon
 #    - Update version (major version for breaking struct change)
-#    - Update documentation (prerequisites/ghostring-common-structs.md)
+#    - Update documentation (docs/ghostring-common-structs.md)
 
 // Example: adding a field to ExecveEvent
 // Old: 40 bytes

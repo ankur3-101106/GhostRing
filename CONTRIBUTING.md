@@ -20,7 +20,7 @@ GhostRing is structured as a decoupled Cargo workspace across three primary crat
 * **`ghostring-ebpf`**: `no_std` Ring 0 eBPF bytecode compiled for the `bpfel-unknown-none` target using `aya-ebpf` and `bpf-linker`.
 * **`ghostring`**: Asynchronous Tokio user-space daemon and CLI tool that loads eBPF programs, polls perf event ring buffers, and processes telemetry.
 
-For deep technical specifications, consult the comprehensive documentation in the [`prerequisites/`](prerequisites/README.md) directory.
+For deep technical specifications, consult the comprehensive documentation in the [`docs/`](docs/README.md) directory.
 
 ---
 
@@ -53,7 +53,7 @@ Alternatively, run any command directly through the wrapper:
 ./.build-env/run.sh cargo check --workspace
 ```
 
-For detailed setup instructions, manual installation procedures, and troubleshooting, refer to [Development Environment Documentation](prerequisites/development-environment.md).
+For detailed setup instructions, manual installation procedures, and troubleshooting, refer to [Development Environment Documentation](docs/development-environment.md).
 
 ---
 

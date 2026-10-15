@@ -56,7 +56,7 @@ Scopes contextualize where the changes take place within the GhostRing workspace
 | **`ebpf`** | Kernel-space Ring 0 bytecode & probes | `ghostring-ebpf/src/**` |
 | **`daemon`** | Asynchronous Tokio user-space daemon & CLI | `ghostring/src/**` |
 | **`transport`** | Ring buffer & `PerfEventArray` mechanics | `ghostring-common/src/event.rs`, `ghostring/src/poller.rs` |
-| **`docs`** | Prerequisites, guides, and repository documentation | `prerequisites/**`, `README.md`, `CLAUDE.md`, `PROJECT.md` |
+| **`docs`** | Documentation, guides, and specifications | `docs/**`, `README.md`, `CLAUDE.md`, `PROJECT.md` |
 | **`build`** | Build scripts, Cargo manifests, toolchain | `Cargo.toml`, `*/build.rs`, `rust-toolchain.toml` |
 | **`ci`** | GitHub Actions & CI automation | `.github/workflows/**` |
 | **`security`** | License compliance, threat modeling, verifier rules | `LICENSE`, security audit configurations |

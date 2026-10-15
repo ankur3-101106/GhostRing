@@ -232,7 +232,7 @@ For GhostRing, the Corresponding Source includes:
 ├── README.md              # High-level overview and roadmap
 ├── LICENSE                # GPLv3 license text
 ├── .gitignore             # Build artifacts ignore patterns
-├── prerequisites/         # This directory — technical knowledge base
+├── docs/                  # This directory — technical knowledge base
 │   ├── *.md               # All deep-dive knowledge files
 ├── ghostring-common/      # C-compatible structs source
 │   └── src/               # Rust source files
@@ -291,7 +291,7 @@ If the project ever needs to change licenses:
 [ ] __license ELF section present and contains "GPLv3\0"
 [ ] No non-GPL-compatible dependencies in ghostring-ebpf (no_std crate)
 [ ] README.md and PROJECT.md mention GPLv3 licensing requirement
-[ ] Prerequisites doc (prerequisites/license-compliance-deep.md) exists and is accurate
+[ ] Documentation (docs/license-compliance-deep.md) exists and is accurate
 [ ] CI/CD checks for license compliance (grep for license string in build output)
 [ ] Documentation warns users about GPLv3 requirement for full eBPF access
 [ ] Source code repository includes all materials needed to modify and rebuild
