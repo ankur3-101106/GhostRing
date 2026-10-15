@@ -451,6 +451,9 @@ def render_html_page(article, content_html, headings):
   <title>{html.escape(title)} | GhostRing Documentation</title>
   <meta name="description" content="{html.escape(article.get("desc", ""))} - GhostRing Ring 0 eBPF Telemetry Engine">
   <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/docs.css">
   <script>
     (function() {{
