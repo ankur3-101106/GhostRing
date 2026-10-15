@@ -1,68 +1,53 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="GhostRing Logo" width="180" />
+  <img src="assets/logo.svg" alt="GhostRing Logo" width="160" />
 </p>
 
-<h1 align="center">GhostRing</h1>
+# GhostRing
 
-<p align="center">
-  <strong>Real-Time Ring 0 eBPF Telemetry & Security Observability Engine in Pure Rust</strong>
-</p>
+GhostRing is a high-performance, real-time Linux security observability and telemetry engine built entirely in Rust. Powered by the [Aya framework](https://aya-rs.dev/), GhostRing instruments the Linux kernel at Ring 0 via eBPF (Extended Berkeley Packet Filter) to deliver tamper-resistant, low-overhead system call auditing without modifying kernel source code or loading proprietary kernel modules.
 
-<p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat-square" alt="License: GPLv3" /></a>
-  <a href="https://aya-rs.dev/"><img src="https://img.shields.io/badge/Framework-Aya%20eBPF-orange.svg?style=flat-square" alt="Aya Framework" /></a>
-  <a href="docs/index.html"><img src="https://img.shields.io/badge/Docs-HTML%20Suite-00f2fe.svg?style=flat-square" alt="Interactive Docs" /></a>
-  <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Rust-Nightly-rebeccapurple.svg?style=flat-square" alt="Rust Nightly" /></a>
-  <img src="https://img.shields.io/badge/Kernel-5.8%2B%20(BTF%2FCO--RE)-brightgreen.svg?style=flat-square" alt="Linux Kernel 5.8+" />
-</p>
+Traditional user-space monitoring utilities rely on `/proc` scanning, ptrace, or dynamic library preloading (`LD_PRELOAD`), leaving them vulnerable to rootkits, API unhooking, and process hiding. GhostRing moves detection into the kernel runtime, ensuring all telemetry is captured at execution time before user-space processes can alter state.
+
+Comprehensive specifications, memory layouts, and diagnostic workflows are available in the [Documentation](docs/index.html).
 
 ---
 
-## Overview
+## Workspace Architecture
 
-**GhostRing** is a high-performance, ultra-low-overhead Linux security observability and kernel-level telemetry engine. Built from the ground up in pure Rust utilizing the [Aya eBPF framework](https://aya-rs.dev/), GhostRing instruments the Linux kernel at Ring 0 via eBPF (Extended Berkeley Packet Filter). 
-
-By intercepting system calls and kernel execution paths directly in kernel space, GhostRing provides zero-trust, tamper-resistant system auditing that remains completely invisible to user-space evasion techniques, `/proc` manipulation, `LD_PRELOAD` bypasses, and rootkits.
-
-All technical specifications, low-level ring buffer layouts, verifier compliance rules, and operational blueprints are comprehensively documented in the **[Interactive HTML Documentation Suite](docs/index.html)**.
-
----
-
-## Architecture & Workspace Structure
-
-GhostRing is structured as a decoupled Cargo workspace partitioning safety, performance, and low-level kernel interaction across three primary crates:
+GhostRing is organized as a decoupled Rust workspace across three distinct crates:
 
 ```text
 GhostRing/
-├── Cargo.toml                  # Workspace manifest defining shared dependencies
+├── Cargo.toml                  # Workspace manifest
 ├── ghostring-common/           # C-compatible #[repr(C)] ABI structs shared across boundaries
 ├── ghostring-ebpf/             # no_std Rust Ring 0 eBPF bytecode (target: bpfel-unknown-none)
-├── ghostring/                  # Asynchronous Tokio user-space daemon & CLI tool
-├── docs/                       # Complete interactive HTML documentation suite
-│   ├── index.html              # Central documentation portal & architecture reference
-│   ├── assets/                 # Stylesheets, search index, interactive scripts, logo
-│   └── *.html                  # 19 comprehensive technical specification documents
-└── scripts/                    # Environment bootstrap, toolchains, and build scripts
-    ├── setup-env.sh            # Automated zero-friction build environment setup
-    ├── build_docs.py           # Documentation generator and internal link validator
-    └── doc_sources/            # Canonical documentation markdown source files
+├── ghostring/                  # Asynchronous Tokio user-space daemon & CLI
+├── docs/                       # Complete HTML technical documentation suite
+└── scripts/                    # Toolchain setup, build automation, and doc generation
 ```
 
-### End-to-End Telemetry Pipeline
+* **`ghostring-common`**: Defines binary event structures shared across the kernel/user boundary. All types enforce `#[repr(C)]` memory layouts with strict alignment and scalar types to guarantee ABI stability and zero runtime serialization cost. See [ghostring-common Struct Design](docs/ghostring-common-structs.html).
+* **`ghostring-ebpf`**: Ring 0 probe programs compiled for the `bpfel-unknown-none` target. Intercepts kernel tracepoints (e.g., `sys_enter_execve`), extracts context metadata via BPF helpers, and emits events into per-CPU perf ring buffers. See [eBPF Internals](docs/ebpf-internals.html) and [Aya Framework](docs/aya-framework.html).
+* **`ghostring`**: Async user-space daemon written with Tokio. Handles ELF program loading, probe attachment, per-CPU ring buffer polling, event parsing, filtering, and logging. See [ghostring User Daemon](docs/ghostring-user-daemon.html).
+
+For an end-to-end breakdown of crate boundaries and data flow, consult the [Architecture Overview](docs/architecture-overview.html).
+
+---
+
+## Telemetry Pipeline
 
 ```
   ┌──────────────────────────────────────────────────────────────┐
   │                    RING 0 - KERNEL SPACE                     │
   │                                                              │
-  │   Kernel Syscall (e.g. sys_enter_execve)                     │
+  │   Tracepoint Interception (sys_enter_execve)                 │
   │         │                                                    │
   │         ▼                                                    │
-  │   ghostring-ebpf Probe (Tracepoint / kprobe)                 │
-  │         │                                                    │
-  │         ├─ Extract PID, UID, GID, Comm via BPF helpers       │
-  │         ├─ Fill C-compatible #[repr(C)] Event Struct         │
+  │   ghostring-ebpf Probe                                       │
+  │         ├─ Extract PID, PPID, UID, GID, Comm via BPF helpers │
+  │         ├─ Populate #[repr(C)] ExecveEvent struct            │
   │         ▼                                                    │
-  │   PerfEventArray Ring Buffer (Per-CPU circular memory)       │
+  │   PerfEventArray (Per-CPU circular memory buffer)            │
   └─────────────────────────────┬────────────────────────────────┘
                                 │
                         mmap Ring Buffer
@@ -70,88 +55,54 @@ GhostRing/
   ┌─────────────────────────────▼────────────────────────────────┐
   │                   RING 3 - USER SPACE                        │
   │                                                              │
-  │   ghostring User Daemon (Tokio Async Poller)                 │
-  │         │                                                    │
-  │         ├─ Asynchronous event loop reading per-CPU buffers   │
-  │         ├─ Zero-copy FFI deserialization (ghostring-common)  │
-  │         ├─ Event filtering, rate limiting, and verification  │
+  │   ghostring Daemon (Tokio Polling Loop)                      │
+  │         ├─ Async poll per-CPU buffers (AsyncPerfEventArray)  │
+  │         ├─ Cast raw bytes into #[repr(C)] Event Structs      │
+  │         ├─ Filter, format, and emit structured audit logs    │
   │         ▼                                                    │
-  │   Structured Auditing, Alerting & SIEM Integration           │
+  │   Console / SIEM / Log Pipeline                              │
   └──────────────────────────────────────────────────────────────┘
 ```
 
----
-
-## Interactive Documentation Suite
-
-GhostRing features an interactive HTML documentation site located in the [`docs/`](docs/index.html) directory. It includes:
-* **Real-time fuzzy search** powered by <kbd>Ctrl</kbd>+<kbd>K</kbd> or <kbd>/</kbd>.
-* **Dark and Light mode** with smooth transition and `localStorage` persistence.
-* **Syntax highlighting** for Rust, C, Bash, TOML, Assembly, and JSON with one-click copy buttons.
-* **On-This-Page scroll spy** and responsive mobile navigation drawer.
-* **700+ verified cross-links** with zero broken references.
-
-> [!TIP]
-> **Viewing the Documentation**: Open [`docs/index.html`](docs/index.html) directly in any web browser, or serve it locally using any static file server (e.g., `python -m http.server -d docs 8000`).
-
-### Documentation Catalog
-
-| Section | Topic | HTML Document | Description |
-|---|---|---|---|
-| **01 Architecture** | Overview | [Architecture Overview](docs/architecture-overview.html) | Workspace crates, boundaries, and pipeline flow. |
-| **01 Architecture** | Environment | [Development Environment](docs/development-environment.html) | In-repository `.build-env/` toolchain setup. |
-| **01 Architecture** | eBPF Basics | [eBPF Fundamentals](docs/ebpf-fundamentals.html) | Execution model, verifier constraints, probe types. |
-| **01 Architecture** | Instrumentation | [Kernel Instrumentation](docs/kernel-instrumentation.html) | Tracepoints, kprobes, and safety guarantees. |
-| **02 Kernel Space** | Bytecode & ISA | [eBPF Internals](docs/ebpf-internals.html) | ISA registers, stack limits, ELF layout, JIT. |
-| **02 Kernel Space** | Framework | [Aya Framework](docs/aya-framework.html) | Pure-Rust eBPF loader, maps, and helpers. |
-| **02 Kernel Space** | Portability | [BTF & CO-RE Deep Dive](docs/btf-co-re-deep-dive.html) | Type Format relocations and cross-kernel portability. |
-| **02 Kernel Space** | ABI & Layout | [ghostring-common Structs](docs/ghostring-common-structs.html) | `#[repr(C)]` struct design and alignment safety. |
-| **03 Telemetry** | Transport | [Event Transport](docs/event-transport.html) | Ring 0 to Ring 3 transmission mechanics. |
-| **03 Telemetry** | Ring Buffers | [Perf Buffer Internals](docs/perf-buffer-internals.html) | Head/tail synchronization and mmap memory layout. |
-| **03 Telemetry** | Daemon | [ghostring User Daemon](docs/ghostring-user-daemon.html) | Tokio async poller architecture and CLI options. |
-| **04 Security** | Requirements | [Security Requirements](docs/security-requirements.html) | Zero-trust advantages over user-space agents. |
-| **04 Security** | Threat Model | [Security Model Deep Dive](docs/security-model-deep-dive.html) | Evasion resilience and kernel rootkit resistance. |
-| **04 Security** | Compliance | [License Compliance Deep Dive](docs/license-compliance-deep.html) | GPLv3 verifier audit trail and helper access. |
-| **05 Operations** | Build System | [Build System & Workspace](docs/build-system-workspace.html) | Target flags, `bpf-linker`, and Cargo config. |
-| **05 Operations** | QA & Tests | [Testing Strategy](docs/testing-strategy.html) | 4-layer testing pyramid and benchmarks. |
-| **05 Operations** | Diagnostics | [Troubleshooting Guide](docs/troubleshooting-guide.html) | 19 diagnostic workflows and common error fixes. |
-| **05 Operations** | Future Scope | [Roadmap Features Deep Dive](docs/roadmap-features-deep.html) | Blueprints for FIM, socket egress, and path reads. |
-
-### Recommended Reading Paths
-
-* **New Contributors**: [Development Environment](docs/development-environment.html) → [Architecture Overview](docs/architecture-overview.html) → [Build System & Workspace](docs/build-system-workspace.html)
-* **Kernel & eBPF Engineers**: [Kernel Instrumentation](docs/kernel-instrumentation.html) → [eBPF Internals](docs/ebpf-internals.html) → [Aya Framework](docs/aya-framework.html) → [BTF & CO-RE](docs/btf-co-re-deep-dive.html)
-* **Daemon & Systems Developers**: [ghostring User Daemon](docs/ghostring-user-daemon.html) → [Event Transport](docs/event-transport.html) → [Perf Buffer Internals](docs/perf-buffer-internals.html) → [Testing Strategy](docs/testing-strategy.html)
-* **Security Auditors**: [Security Requirements](docs/security-requirements.html) → [Security Model Deep Dive](docs/security-model-deep-dive.html) → [License Compliance](docs/license-compliance-deep.html)
+For detailed memory layout specifications, mmap header structures, and pointer synchronization mechanics, refer to [Perf Buffer Internals](docs/perf-buffer-internals.html) and [Event Transport](docs/event-transport.html).
 
 ---
 
-## Quickstart & Build Instructions
+## Prerequisites
 
-### 1. Automated Environment Bootstrap
+* **Operating System**: Linux kernel **5.8 or higher** with BTF (`CONFIG_DEBUG_INFO_BTF=y`) enabled.
+* **Rust Toolchain**: Rust Nightly with `rust-src` component (required for compiling `core` to `bpfel-unknown-none`).
+* **BPF Linker**: `bpf-linker` (static binary linked against matching LLVM).
+* **System Utilities**: `llvm`, `clang`, `make`, `zstd`, `curl`.
 
-GhostRing employs an **isolated in-repository build environment** (`.build-env/`), guaranteeing that host toolchains remain untouched. To bootstrap the complete toolchain (Nightly Rust, `rust-src`, and static `bpf-linker`):
+For distribution-specific prerequisites and kernel verification steps, see the [Development Environment Guide](docs/development-environment.html).
+
+---
+
+## Quickstart
+
+### 1. Bootstrap the Isolated Build Environment
+
+GhostRing uses an isolated in-repository toolchain (`.build-env/`) to avoid conflicting with host Rust installations:
 
 ```bash
 # Clone the repository
 git clone https://github.com/ankur3-101106/GhostRing.git
 cd GhostRing
 
-# Run the automated setup script
+# Run the automated bootstrap script
 ./scripts/setup-env.sh
 ```
 
-### 2. Activate the Build Environment
-
-In your active shell session, activate the isolated environment:
+### 2. Activate the Environment
 
 ```bash
 source .build-env/activate
 ```
 
-*(Alternatively, run commands through the wrapper: `./.build-env/run.sh <command>`)*
+*(Alternatively, run commands directly via the wrapper: `./.build-env/run.sh cargo ...`)*
 
-### 3. Compile the Kernel-Space eBPF Bytecode
+### 3. Build the Kernel eBPF Bytecode
 
 ```bash
 cd ghostring-ebpf
@@ -159,57 +110,70 @@ cargo build --release
 cd ..
 ```
 
-### 4. Run the User-Space Daemon
+### 4. Run the User Daemon
 
-Attaching eBPF programs to kernel tracepoints requires elevated privileges (`CAP_BPF` / `CAP_PERFMON` or root):
+Attaching eBPF programs to tracepoints requires elevated capabilities (`CAP_BPF` and `CAP_PERFMON`, or root):
 
 ```bash
 cd ghostring
 sudo -E cargo run --release
 ```
 
-### 5. Rebuilding Documentation
-
-To regenerate the HTML documentation site and run automated link validation:
-
-```bash
-python scripts/build_docs.py
-```
+For diagnostic steps regarding verifier rejections, memory lock limits, or permission errors, refer to the [Troubleshooting Guide](docs/troubleshooting-guide.html).
 
 ---
 
-## Key Technical Specifications
+## Technical Documentation Reference
 
-* **Kernel Interception:** Tracepoint `sys_enter_execve` monitoring process creation with process ID (`pid`), parent process ID (`ppid`), user ID (`uid`), group ID (`gid`), and executable command name (`comm`).
-* **Transport Mechanism:** Lock-free per-CPU `BPF_MAP_TYPE_PERF_EVENT_ARRAY` ring buffers with asynchronous user-space polling via `aya::maps::perf::AsyncPerfEventArray`.
-* **Zero Serialization Overhead:** Direct C-compatible memory layout (`#[repr(C)]`) across kernel and user space defined in `ghostring-common`.
-* **Verifier Safety:** 100% compliant with the Linux kernel eBPF verifier, guaranteeing memory bounds, non-looping verification, and crash resistance.
+The documentation suite in [`docs/`](docs/index.html) covers all architectural layers, security considerations, and operational workflows:
+
+| Category | Reference Document | Description |
+|---|---|---|
+| **Foundational Architecture** | [Architecture Overview](docs/architecture-overview.html) | Workspace crates, boundaries, and telemetry pipeline |
+| | [Development Environment](docs/development-environment.html) | System prerequisites, isolated toolchain, and bootstrap |
+| | [eBPF Fundamentals](docs/ebpf-fundamentals.html) | Kernel execution model, safety guarantees, and verifier |
+| | [Kernel Instrumentation](docs/kernel-instrumentation.html) | Tracepoint interception, probe types, and safety rules |
+| **Kernel Engineering** | [eBPF Internals & Bytecode](docs/ebpf-internals.html) | Instruction set, register model, ELF layout, and JIT |
+| | [Aya Framework](docs/aya-framework.html) | Pure-Rust Aya ecosystem, loader abstractions, and maps |
+| | [BTF & CO-RE Deep Dive](docs/btf-co-re-deep-dive.html) | Type format relocations and cross-kernel portability |
+| | [ghostring-common Structs](docs/ghostring-common-structs.html) | C-compatible memory layouts and cross-boundary ABI |
+| **Telemetry Pipeline** | [Event Transport](docs/event-transport.html) | Ring 0 to user space telemetry mechanics |
+| | [Perf Buffer Internals](docs/perf-buffer-internals.html) | Ring buffer layout, mmap headers, and per-CPU rings |
+| | [ghostring User Daemon](docs/ghostring-user-daemon.html) | Tokio async loop, buffer poller, CLI options, and logging |
+| **Security & Compliance** | [Security Requirements](docs/security-requirements.html) | Zero-trust advantages, threat posture, and licensing |
+| | [Security Model Deep Dive](docs/security-model-deep-dive.html) | Threat matrix, evasion defenses, and rootkit resistance |
+| | [License Compliance Deep Dive](docs/license-compliance-deep.html) | GPLv3 verifier requirements and helper access |
+| **Operations & Quality** | [Build System & Workspace](docs/build-system-workspace.html) | Target flags, `bpf-linker`, and Cargo workspace config |
+| | [Testing Strategy](docs/testing-strategy.html) | 4-layer testing pyramid, benchmarks, and quality gates |
+| | [Troubleshooting Guide](docs/troubleshooting-guide.html) | 19 diagnostic workflows for build, verifier, and runtime errors |
+| | [Roadmap Features Deep Dive](docs/roadmap-features-deep.html) | Blueprints for path reads, socket egress, and FIM |
 
 ---
 
-## Roadmap & Upcoming Features
+## Technical Roadmap
 
-Detailed architectural blueprints for all upcoming features are available in the [Roadmap Features Deep Dive](docs/roadmap-features-deep.html):
+- [ ] **Path Extraction (`bpf_probe_read_user_str`)**: Read absolute filesystem paths within `sys_enter_execve` rather than relying solely on the 16-byte `comm` field.
+- [ ] **Network Socket Observability (`tcp_connect`)**: Attach kprobes to kernel socket operations to track outbound network connections and reverse shells.
+- [ ] **File Integrity Monitoring (`sys_enter_openat`)**: Intercept file open operations to detect unauthorized access to sensitive paths (`/etc/shadow`, `/etc/passwd`, SSH keys).
+- [ ] **Structured SIEM Export**: Add `--json` output format for streaming events into Vector, Elasticsearch, and Splunk.
 
-- [ ] **Absolute Path Extraction:** Intercept file paths using `bpf_probe_read_user_str` within `sys_enter_execve` to eliminate 16-byte `comm` truncation.
-- [ ] **Network Socket Observability:** Dynamic kprobes on `tcp_connect` to detect egress connections, reverse shells, and malicious beaconing.
-- [ ] **File Integrity Monitoring (FIM):** Intercept `sys_enter_openat` with path validation to monitor access to critical system files (`/etc/shadow`, `/etc/passwd`, SSH keys).
-- [ ] **Structured SIEM Export:** Native JSON/NDJSON event emitter flag (`--json`) for direct forwarding to Elasticsearch, Vector, and Splunk.
+Detailed engineering blueprints for these milestones are documented in [Roadmap Features Deep Dive](docs/roadmap-features-deep.html).
 
 ---
 
-## Licensing & Kernel Verifier Compliance
+## License & Kernel Compliance
 
-GhostRing is distributed under the terms of the **[GNU General Public License v3.0 (GPLv3)](LICENSE)**.
+GhostRing is licensed under the **[GNU General Public License v3.0 (GPLv3)](LICENSE)**.
 
-> [!IMPORTANT]
-> **Kernel Verifier Licensing Rule**: The Linux kernel verifier inspects the `.license` section of every loaded eBPF ELF binary. Programs without a GPL-compatible license are barred from invoking advanced BPF helper functions (`bpf_probe_read_user_str`, tracing helpers, etc.). Licensing GhostRing under GPLv3 guarantees 100% binary compatibility and unrestricted access to the kernel's eBPF helper subsystem. See the [License Compliance Deep Dive](docs/license-compliance-deep.html) for complete technical and legal details.
+### Kernel Verifier Requirement
+
+The Linux kernel verifier inspects the `.license` section of loaded eBPF programs. Non-GPL-compatible programs are restricted by the kernel from invoking advanced BPF helper functions (including `bpf_probe_read_user_str` and tracing utilities). Licensing GhostRing under GPLv3 ensures full binary compatibility and unrestricted access to kernel helper functions. See [License Compliance Deep Dive](docs/license-compliance-deep.html).
 
 ---
 
 ## Community & Contributing
 
-* **[Contributing Guide](CONTRIBUTING.md)**: Git workflow, isolated environment guidelines, and PR quality gates.
-* **[Code of Conduct](CODE_OF_CONDUCT.md)**: Standards of community engagement (Contributor Covenant v2.1).
-* **[Security Policy](SECURITY.md)**: Vulnerability disclosure and reporting procedures.
-* **[Commit Standards](COMMIT.md)**: Conventional Commits 1.0.0 specification and repository scopes.
+* [Contributing Guide](CONTRIBUTING.md) — Workflow guidelines, build instructions, and pull request checklist.
+* [Code of Conduct](CODE_OF_CONDUCT.md) — Community participation standards (Contributor Covenant v2.1).
+* [Security Policy](SECURITY.md) — Vulnerability reporting and disclosure process.
+* [Commit Standards](COMMIT.md) — Conventional Commits 1.0.0 guidelines.
