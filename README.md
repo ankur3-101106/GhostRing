@@ -12,19 +12,17 @@ GhostRing instruments the Linux kernel at Ring 0 via eBPF using the [Aya framewo
 
 ## Documentation
 
-All architectural specifications, low-level mechanics, and operational guides are documented in the **[`docs/`](docs/index.html)** suite:
+All architectural specifications, low-level mechanics, and operational guides are documented in the **[`docs/`](https://ankur3-101106.github.io/GhostRing/index.html)** suite:
 
-* **[Architecture & Workspace](docs/architecture-overview.html)** — 3-crate workspace partitioning (`ghostring-common`, `ghostring-ebpf`, `ghostring`), crate boundaries, and [Build System](docs/build-system-workspace.html).
-* **[Telemetry Pipeline](docs/event-transport.html)** — Ring 0 tracepoint interception, `PerfEventArray` mechanics, and [Perf Buffer Internals](docs/perf-buffer-internals.html).
-* **[Kernel Space & eBPF Engineering](docs/ebpf-internals.html)** — Bytecode ISA, [Aya Framework](docs/aya-framework.html), [BTF & CO-RE](docs/btf-co-re-deep-dive.html), and [C-compatible ABI Structs](docs/ghostring-common-structs.html).
-* **[User Daemon](docs/ghostring-user-daemon.html)** — Async Tokio daemon architecture, buffer poller loop, CLI flags, and logging.
-* **[Prerequisites & Environment](docs/development-environment.html)** — System requirements (Linux 5.8+, BTF) and isolated in-repo toolchain (`.build-env/`).
-* **[Testing Strategy](docs/testing-strategy.html)** — 4-tier testing pyramid, layout validation, and benchmarks.
-* **[Troubleshooting Guide](docs/troubleshooting-guide.html)** — Diagnostic workflows for build, verifier, and runtime errors.
-* **[Security & License Compliance](docs/license-compliance-deep.html)** — [Security Model](docs/security-model-deep-dive.html), [Security Requirements](docs/security-requirements.html), and GPLv3 kernel verifier rules.
-* **[Technical Roadmap](docs/roadmap-features-deep.html)** — Blueprints for path reads, socket observability (`tcp_connect`), and FIM (`sys_enter_openat`).
-
-*Full index and recommended reading paths: **[docs/index.html](docs/index.html)***
+* **[Architecture & Workspace](https://ankur3-101106.github.io/GhostRing/architecture-overview.html)** — 3-crate workspace partitioning (`ghostring-common`, `ghostring-ebpf`, `ghostring`), crate boundaries, and [Build System](https://ankur3-101106.github.io/GhostRing/build-system-workspace.html).
+* **[Telemetry Pipeline](https://ankur3-101106.github.io/GhostRing/event-transport.html)** — Ring 0 tracepoint interception, `PerfEventArray` mechanics, and [Perf Buffer Internals](https://ankur3-101106.github.io/GhostRing/perf-buffer-internals.html).
+* **[Kernel Space & eBPF Engineering](https://ankur3-101106.github.io/GhostRing/ebpf-internals.html)** — Bytecode ISA, [Aya Framework](https://ankur3-101106.github.io/GhostRing/aya-framework.html), [BTF & CO-RE](https://ankur3-101106.github.io/GhostRing/btf-co-re-deep-dive.html), and [C-compatible ABI Structs](https://ankur3-101106.github.io/GhostRing/ghostring-common-structs.html).
+* **[User Daemon](https://ankur3-101106.github.io/GhostRing/ghostring-user-daemon.html)** — Async Tokio daemon architecture, buffer poller loop, CLI flags, and logging.
+* **[Prerequisites & Environment](https://ankur3-101106.github.io/GhostRing/development-environment.html)** — System requirements (Linux 5.8+, BTF) and isolated in-repo toolchain (`.build-env/`).
+* **[Testing Strategy](https://ankur3-101106.github.io/GhostRing/testing-strategy.html)** — 4-tier testing pyramid, layout validation, and benchmarks.
+* **[Troubleshooting Guide](https://ankur3-101106.github.io/GhostRing/troubleshooting-guide.html)** — Diagnostic workflows for build, verifier, and runtime errors.
+* **[Security & License Compliance](https://ankur3-101106.github.io/GhostRing/license-compliance-deep.html)** — [Security Model](https://ankur3-101106.github.io/GhostRing/security-model-deep-dive.html), [Security Requirements](https://ankur3-101106.github.io/GhostRing/security-requirements.html), and GPLv3 kernel verifier rules.
+* **[Technical Roadmap](https://ankur3-101106.github.io/GhostRing/roadmap-features-deep.html)** — Blueprints for path reads, socket observability (`tcp_connect`), and FIM (`sys_enter_openat`).
 
 ---
 
