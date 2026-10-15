@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GhostRing Technical Documentation &amp; Architecture Reference | GhostRing Documentation</title>
+  <meta name="description" content="Technical documentation suite and architecture reference for the GhostRing eBPF telemetry engine. - GhostRing Ring 0 eBPF Telemetry Engine">
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+  <link rel="stylesheet" href="assets/docs.css">
+  <script>
+    (function() {
+      const stored = localStorage.getItem('ghostring_docs_theme');
+      if (stored) {
+        document.documentElement.setAttribute('data-theme', stored);
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+</head>
+<body class="docs-body">
+
+  <!-- Top Navigation Bar -->
+  <header class="top-nav">
+    <div class="top-nav-inner">
+      <div class="nav-left">
+        <button id="mobile-sidebar-toggle" class="nav-icon-btn mobile-only" aria-label="Open Sidebar Menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+        <a href="index.html" class="brand-link">
+          <img src="assets/logo.svg" alt="GhostRing Logo" class="brand-logo" width="32" height="32">
+          <div class="brand-info">
+            <span class="brand-name">GhostRing</span>
+            <span class="brand-tag">Ring 0 Telemetry</span>
+          </div>
+        </a>
+        <span class="version-pill">v0.1.0</span>
+      </div>
+
+      <div class="nav-center">
+        <button id="search-trigger-btn" class="search-trigger" type="button" aria-label="Search documentation">
+          <svg class="search-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <span class="search-placeholder">Search documentation...</span>
+          <span class="search-shortcut"><kbd>Ctrl</kbd><kbd>K</kbd></span>
+        </button>
+      </div>
+
+      <div class="nav-right">
+        <button id="theme-toggle" class="nav-icon-btn" type="button" aria-label="Toggle light/dark theme" title="Toggle theme">
+          <svg class="theme-icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+          <svg class="theme-icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        </button>
+        <a href="https://github.com/ankur/ghostring" target="_blank" rel="noopener noreferrer" class="nav-icon-btn github-btn" aria-label="GitHub Repository" title="GitHub">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"></path></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Documentation Container -->
+  <div class="docs-layout">
+    
+    <!-- Left Navigation Sidebar -->
+    <aside id="docs-sidebar" class="docs-sidebar">
+      <div class="sidebar-scroller">
+        <nav class="sidebar-nav" aria-label="Main Navigation">
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">Documentation Suite</div>
+      <ul class="sidebar-links">
+        <li>
+          <a href="index.html" class="sidebar-link active">
+            <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            <span>Documentation Hub</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">01</span>
+        <span class="group-title">Foundational Architecture & Environment</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="architecture-overview.html" class="sidebar-link" title="Architecture Overview">
+            <span class="link-bullet"></span>
+            <span class="link-text">Architecture Overview</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="development-environment.html" class="sidebar-link" title="Development Environment">
+            <span class="link-bullet"></span>
+            <span class="link-text">Development Environment</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ebpf-fundamentals.html" class="sidebar-link" title="eBPF Fundamentals">
+            <span class="link-bullet"></span>
+            <span class="link-text">eBPF Fundamentals</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="kernel-instrumentation.html" class="sidebar-link" title="Kernel Instrumentation">
+            <span class="link-bullet"></span>
+            <span class="link-text">Kernel Instrumentation</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">02</span>
+        <span class="group-title">Kernel Space & eBPF Engineering</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="ebpf-internals.html" class="sidebar-link" title="eBPF Internals &amp; Bytecode">
+            <span class="link-bullet"></span>
+            <span class="link-text">eBPF Internals &amp; Bytecode</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="aya-framework.html" class="sidebar-link" title="Aya Framework">
+            <span class="link-bullet"></span>
+            <span class="link-text">Aya Framework</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="btf-co-re-deep-dive.html" class="sidebar-link" title="BTF &amp; CO-RE Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">BTF &amp; CO-RE Deep Dive</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ghostring-common-structs.html" class="sidebar-link" title="ghostring-common Structs">
+            <span class="link-bullet"></span>
+            <span class="link-text">ghostring-common Structs</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">03</span>
+        <span class="group-title">Telemetry & User Space Pipeline</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="event-transport.html" class="sidebar-link" title="Event Transport">
+            <span class="link-bullet"></span>
+            <span class="link-text">Event Transport</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="perf-buffer-internals.html" class="sidebar-link" title="Perf Buffer Internals">
+            <span class="link-bullet"></span>
+            <span class="link-text">Perf Buffer Internals</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ghostring-user-daemon.html" class="sidebar-link" title="ghostring User Daemon">
+            <span class="link-bullet"></span>
+            <span class="link-text">ghostring User Daemon</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">04</span>
+        <span class="group-title">Security, Compliance & Governance</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="security-requirements.html" class="sidebar-link" title="Security Requirements">
+            <span class="link-bullet"></span>
+            <span class="link-text">Security Requirements</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="security-model-deep-dive.html" class="sidebar-link" title="Security Model Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">Security Model Deep Dive</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="license-compliance-deep.html" class="sidebar-link" title="License Compliance Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">License Compliance Deep Dive</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">05</span>
+        <span class="group-title">Quality Assurance, Operations & Roadmap</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="build-system-workspace.html" class="sidebar-link" title="Build System &amp; Workspace">
+            <span class="link-bullet"></span>
+            <span class="link-text">Build System &amp; Workspace</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="testing-strategy.html" class="sidebar-link" title="Testing Strategy">
+            <span class="link-bullet"></span>
+            <span class="link-text">Testing Strategy</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="troubleshooting-guide.html" class="sidebar-link" title="Troubleshooting Guide">
+            <span class="link-bullet"></span>
+            <span class="link-text">Troubleshooting Guide</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="roadmap-features-deep.html" class="sidebar-link" title="Roadmap Features Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">Roadmap Features Deep Dive</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+</nav>
+      </div>
+    </aside>
+    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+    <!-- Center Content Article -->
+    <main class="docs-main">
+      <div class="content-wrapper">
+        
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <a href="index.html" class="crumb-link">Docs</a>
+      <span class="crumb-sep">/</span>
+      <span class="crumb-cat">Overview</span>
+      <span class="crumb-sep">/</span>
+      <span class="crumb-active">GhostRing Technical Documentation &amp; Architecture Reference</span>
+    </nav>
+    
+        
+        <article class="markdown-body">
+          
+        <div class="docs-hero">
+          <div class="hero-badge">
+            <span class="hero-badge-dot"></span>
+            <span>GhostRing v0.1.0 • Technical Documentation Suite</span>
+          </div>
+          <h1 class="hero-title">Ring 0 eBPF Telemetry Engine</h1>
+          <p class="hero-subtitle">
+            GhostRing is a modern, high-performance security observability subsystem written in pure Rust with Aya. 
+            Engineered with a strict 3-crate workspace architecture to deliver non-blocking, zero-trust system event auditing with kernel verifier safety.
+          </p>
+          <div class="hero-actions">
+            <a href="architecture-overview.html" class="hero-btn primary-btn">
+              Get Started
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            </a>
+            <a href="development-environment.html" class="hero-btn secondary-btn">
+              Setup Build Env
+            </a>
+            <a href="https://github.com/ankur/ghostring" target="_blank" rel="noopener noreferrer" class="hero-btn outline-btn">
+              View on GitHub
+            </a>
+          </div>
+
+          <div class="quick-nav-grid">
+            <a href="architecture-overview.html" class="quick-card">
+              <div class="quick-card-badge">01</div>
+              <h3 class="quick-card-title">Architecture</h3>
+              <p class="quick-card-desc">3-crate segregation, boundary validation, and end-to-end telemetry pipeline.</p>
+            </a>
+            <a href="aya-framework.html" class="quick-card">
+              <div class="quick-card-badge">02</div>
+              <h3 class="quick-card-title">Kernel & Aya</h3>
+              <p class="quick-card-desc">Pure Rust eBPF ISA, CO-RE relocations, BTF types, and Aya framework bindings.</p>
+            </a>
+            <a href="perf-buffer-internals.html" class="quick-card">
+              <div class="quick-card-badge">03</div>
+              <h3 class="quick-card-title">Perf Ring Buffers</h3>
+              <p class="quick-card-desc">Mmap header layouts, per-CPU lock-free queues, and Tokio polling daemon.</p>
+            </a>
+            <a href="security-model-deep-dive.html" class="quick-card">
+              <div class="quick-card-badge">04</div>
+              <h3 class="quick-card-title">Security & License</h3>
+              <p class="quick-card-desc">Ring 0 tamper resistance, threat modeling, and GPLv3 verifier compliance.</p>
+            </a>
+            <a href="testing-strategy.html" class="quick-card">
+              <div class="quick-card-badge">05</div>
+              <h3 class="quick-card-title">QA & Troubleshooting</h3>
+              <p class="quick-card-desc">4-tier test pyramid, benchmarks, and 19 diagnostic workflows.</p>
+            </a>
+          </div>
+        </div>
+        <hr />
+        <h1 id="ghostring-technical-documentation-architecture-reference">GhostRing Technical Documentation &amp; Architecture Reference <a href="#ghostring-technical-documentation-architecture-reference" class="heading-anchor" aria-label="Permalink to GhostRing Technical Documentation &amp; Architecture Reference">#</a></h1>
+<p>This directory serves as the technical documentation suite and architecture reference for the GhostRing repository. It provides comprehensive specifications across kernel-space eBPF instrumentation, data transport mechanisms, user-space daemon operations, security and licensing compliance, and development workflows.</p>
+<hr />
+<h2 id="documentation-index">Documentation Index <a href="#documentation-index" class="heading-anchor" aria-label="Permalink to Documentation Index">#</a></h2>
+<h3 id="1-foundational-architecture-environment">1. Foundational Architecture &amp; Environment <a href="#1-foundational-architecture-environment" class="heading-anchor" aria-label="Permalink to 1. Foundational Architecture &amp; Environment">#</a></h3>
+<ul>
+<li><a href="architecture-overview.html">Architecture Overview</a> — Comprehensive overview of the 3-crate workspace architecture, crate boundaries, and end-to-end telemetry pipeline.</li>
+<li><a href="development-environment.html">Development Environment &amp; Isolated Build System</a> — System requirements (Linux 5.8+, BTF), in-repository isolated toolchain (<code>.build-env/</code>), automated bootstrap script (<code>scripts/setup-env.sh</code>), and verification.</li>
+<li><a href="ebpf-fundamentals.html">eBPF Fundamentals</a> — Core eBPF principles, execution model, probe types, memory safety, and kernel verifier requirements.</li>
+<li><a href="kernel-instrumentation.html">Kernel Instrumentation</a> — Ring 0 execution path interception, tracepoints, kprobes, context extraction, and kernel safety guarantees.</li>
+</ul>
+<h3 id="2-kernel-space-ebpf-engineering">2. Kernel Space &amp; eBPF Engineering <a href="#2-kernel-space-ebpf-engineering" class="heading-anchor" aria-label="Permalink to 2. Kernel Space &amp; eBPF Engineering">#</a></h3>
+<ul>
+<li><a href="ebpf-internals.html">eBPF Internals &amp; Bytecode</a> — eBPF instruction set architecture (ISA), register conventions, verifier static analysis, ELF layout, and JIT compilation.</li>
+<li><a href="aya-framework.html">Aya Framework</a> — Deep dive into the pure-Rust Aya ecosystem (<code>aya</code>, <code>aya-ebpf</code>, <code>aya-poll</code>), ELF loading, map abstractions, and helper bindings.</li>
+<li><a href="btf-co-re-deep-dive.html">BTF &amp; CO-RE Deep Dive</a> — BPF Type Format (BTF) structure, Compile Once, Run Everywhere (CO-RE) field relocations, and kernel portability.</li>
+<li><a href="ghostring-common-structs.html">ghostring-common Struct Design</a> — C-compatible <code>#[repr(C)]</code> memory layouts, alignment constraints, scalar type mappings, and cross-boundary ABI stability.</li>
+</ul>
+<h3 id="3-telemetry-user-space-pipeline">3. Telemetry &amp; User Space Pipeline <a href="#3-telemetry-user-space-pipeline" class="heading-anchor" aria-label="Permalink to 3. Telemetry &amp; User Space Pipeline">#</a></h3>
+<ul>
+<li><a href="event-transport.html">Event Transport</a> — Telemetry transmission mechanics from Ring 0 to user space via <code>PerfEventArray</code> ring buffers.</li>
+<li><a href="perf-buffer-internals.html">Perf Buffer Internals</a> — Low-level ring buffer memory layout, mmap headers, head/tail pointer synchronization, per-CPU ring handling, and backpressure management.</li>
+<li><a href="ghostring-user-daemon.html">ghostring User Daemon</a> — Asynchronous Tokio daemon architecture, per-CPU buffer polling loop, CLI options, event filtering, and structured logging.</li>
+</ul>
+<h3 id="4-security-compliance-governance">4. Security, Compliance &amp; Governance <a href="#4-security-compliance-governance" class="heading-anchor" aria-label="Permalink to 4. Security, Compliance &amp; Governance">#</a></h3>
+<ul>
+<li><a href="security-requirements.html">Security Requirements</a> — Ring 0 zero-trust observability advantages, tamper resistance, and kernel licensing requirements.</li>
+<li><a href="security-model-deep-dive.html">Security Model Deep Dive</a> — Threat model, evasion countermeasures, kernel rootkit resistance, and defense-in-depth principles.</li>
+<li><a href="license-compliance-deep.html">License Compliance Deep Dive</a> — GNU General Public License v3.0 (GPLv3) compliance analysis, Linux kernel verifier license checking, and BPF helper access.</li>
+</ul>
+<h3 id="5-quality-assurance-operations-roadmap">5. Quality Assurance, Operations &amp; Roadmap <a href="#5-quality-assurance-operations-roadmap" class="heading-anchor" aria-label="Permalink to 5. Quality Assurance, Operations &amp; Roadmap">#</a></h3>
+<ul>
+<li><a href="build-system-workspace.html">Build System &amp; Workspace</a> — Root Cargo workspace configuration, compilation targets (<code>bpfel-unknown-none</code>), <code>bpf-linker</code> integration, and CI/CD pipelines.</li>
+<li><a href="testing-strategy.html">Testing Strategy</a> — Four-layer testing pyramid (unit, struct layout, integration, and E2E testing), benchmark suites, and release quality gates.</li>
+<li><a href="troubleshooting-guide.html">Troubleshooting Guide</a> — Diagnostic workflows and solutions for 19 common build, verifier, permission, and runtime errors.</li>
+<li><a href="roadmap-features-deep.html">Roadmap Features Deep Dive</a> — Architectural blueprints for advanced path extraction (<code>bpf_probe_read_user_str</code>), socket observability (<code>tcp_connect</code>), and File Integrity Monitoring (<code>sys_enter_openat</code>).</li>
+</ul>
+<hr />
+<h2 id="cross-reference-matrix">Cross-Reference Matrix <a href="#cross-reference-matrix" class="heading-anchor" aria-label="Permalink to Cross-Reference Matrix">#</a></h2>
+<p>The documentation suite is designed with interconnected references across architectural boundaries:</p>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Primary Reference</th>
+<th>Directly Related Documents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Architecture</strong></td>
+<td><a href="architecture-overview.html">Architecture Overview</a></td>
+<td><a href="ebpf-fundamentals.html">eBPF Fundamentals</a>, <a href="event-transport.html">Event Transport</a>, <a href="ghostring-common-structs.html">ghostring-common Structs</a>, <a href="ghostring-user-daemon.html">ghostring User Daemon</a></td>
+</tr>
+<tr>
+<td><strong>Kernel Probes</strong></td>
+<td><a href="kernel-instrumentation.html">Kernel Instrumentation</a></td>
+<td><a href="ebpf-internals.html">eBPF Internals</a>, <a href="btf-co-re-deep-dive.html">BTF &amp; CO-RE</a>, <a href="aya-framework.html">Aya Framework</a>, <a href="license-compliance-deep.html">License Compliance</a></td>
+</tr>
+<tr>
+<td><strong>Data Transport</strong></td>
+<td><a href="event-transport.html">Event Transport</a></td>
+<td><a href="perf-buffer-internals.html">Perf Buffer Internals</a>, <a href="ghostring-common-structs.html">ghostring-common Structs</a>, <a href="ghostring-user-daemon.html">ghostring User Daemon</a></td>
+</tr>
+<tr>
+<td><strong>Data Structures</strong></td>
+<td><a href="ghostring-common-structs.html">ghostring-common Structs</a></td>
+<td><a href="event-transport.html">Event Transport</a>, <a href="btf-co-re-deep-dive.html">BTF &amp; CO-RE</a>, <a href="testing-strategy.html">Testing Strategy</a>, <a href="roadmap-features-deep.html">Roadmap Features</a></td>
+</tr>
+<tr>
+<td><strong>User Daemon</strong></td>
+<td><a href="ghostring-user-daemon.html">ghostring User Daemon</a></td>
+<td><a href="aya-framework.html">Aya Framework</a>, <a href="perf-buffer-internals.html">Perf Buffer Internals</a>, <a href="build-system-workspace.html">Build System</a>, <a href="troubleshooting-guide.html">Troubleshooting</a></td>
+</tr>
+<tr>
+<td><strong>Portability</strong></td>
+<td><a href="btf-co-re-deep-dive.html">BTF &amp; CO-RE Deep Dive</a></td>
+<td><a href="ebpf-internals.html">eBPF Internals</a>, <a href="aya-framework.html">Aya Framework</a>, <a href="kernel-instrumentation.html">Kernel Instrumentation</a></td>
+</tr>
+<tr>
+<td><strong>Licensing</strong></td>
+<td><a href="license-compliance-deep.html">License Compliance Deep Dive</a></td>
+<td><a href="security-requirements.html">Security Requirements</a>, <a href="ebpf-internals.html">eBPF Internals</a>, <a href="build-system-workspace.html">Build System</a></td>
+</tr>
+<tr>
+<td><strong>Build &amp; Toolchain</strong></td>
+<td><a href="build-system-workspace.html">Build System &amp; Workspace</a></td>
+<td><a href="development-environment.html">Development Environment</a>, <a href="testing-strategy.html">Testing Strategy</a>, <a href="troubleshooting-guide.html">Troubleshooting</a></td>
+</tr>
+<tr>
+<td><strong>Threat Modeling</strong></td>
+<td><a href="security-model-deep-dive.html">Security Model Deep Dive</a></td>
+<td><a href="security-requirements.html">Security Requirements</a>, <a href="kernel-instrumentation.html">Kernel Instrumentation</a>, <a href="roadmap-features-deep.html">Roadmap Features</a></td>
+</tr>
+<tr>
+<td><strong>Quality &amp; Tests</strong></td>
+<td><a href="testing-strategy.html">Testing Strategy</a></td>
+<td><a href="build-system-workspace.html">Build System</a>, <a href="ghostring-common-structs.html">ghostring-common Structs</a>, <a href="troubleshooting-guide.html">Troubleshooting</a></td>
+</tr>
+<tr>
+<td><strong>Future Scope</strong></td>
+<td><a href="roadmap-features-deep.html">Roadmap Features Deep Dive</a></td>
+<td><a href="kernel-instrumentation.html">Kernel Instrumentation</a>, <a href="ghostring-common-structs.html">ghostring-common Structs</a>, <a href="ghostring-user-daemon.html">ghostring User Daemon</a></td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="recommended-reading-paths">Recommended Reading Paths <a href="#recommended-reading-paths" class="heading-anchor" aria-label="Permalink to Recommended Reading Paths">#</a></h2>
+<h3 id="1-new-contributor-onboarding">1. New Contributor Onboarding <a href="#1-new-contributor-onboarding" class="heading-anchor" aria-label="Permalink to 1. New Contributor Onboarding">#</a></h3>
+<ol>
+<li><a href="development-environment.html">Development Environment</a> — Set up required kernel headers, Nightly Rust, and <code>bpf-linker</code>.</li>
+<li><a href="architecture-overview.html">Architecture Overview</a> — Understand crate segregation and system data flow.</li>
+<li><a href="ebpf-fundamentals.html">eBPF Fundamentals</a> — Review kernel execution model and safety guarantees.</li>
+<li><a href="build-system-workspace.html">Build System &amp; Workspace</a> — Learn how to build and run the complete workspace.</li>
+</ol>
+<h3 id="2-kernel-ebpf-engineers">2. Kernel &amp; eBPF Engineers <a href="#2-kernel-ebpf-engineers" class="heading-anchor" aria-label="Permalink to 2. Kernel &amp; eBPF Engineers">#</a></h3>
+<ol>
+<li><a href="kernel-instrumentation.html">Kernel Instrumentation</a> — Tracepoint and probe mechanics.</li>
+<li><a href="ebpf-internals.html">eBPF Internals &amp; Bytecode</a> — ISA, stack limitations, and verifier rules.</li>
+<li><a href="aya-framework.html">Aya Framework</a> — aya-ebpf bindings and helper invocations.</li>
+<li><a href="btf-co-re-deep-dive.html">BTF &amp; CO-RE Deep Dive</a> — Cross-kernel struct relocations.</li>
+<li><a href="license-compliance-deep.html">License Compliance Deep Dive</a> — GPLv3 requirements for helper access.</li>
+</ol>
+<h3 id="3-systems-daemon-developers">3. Systems &amp; Daemon Developers <a href="#3-systems-daemon-developers" class="heading-anchor" aria-label="Permalink to 3. Systems &amp; Daemon Developers">#</a></h3>
+<ol>
+<li><a href="ghostring-user-daemon.html">ghostring User Daemon</a> — Tokio async loop and poller design.</li>
+<li><a href="event-transport.html">Event Transport</a> — Data ingestion pipeline from kernel space.</li>
+<li><a href="perf-buffer-internals.html">Perf Buffer Internals</a> — Memory layouts, header structs, and per-CPU ring handling.</li>
+<li><a href="ghostring-common-structs.html">ghostring-common Struct Design</a> — <code>#[repr(C)]</code> struct definitions and ABI stability.</li>
+<li><a href="testing-strategy.html">Testing Strategy</a> — Integration test patterns and release validation.</li>
+</ol>
+<h3 id="4-security-architects-auditors">4. Security Architects &amp; Auditors <a href="#4-security-architects-auditors" class="heading-anchor" aria-label="Permalink to 4. Security Architects &amp; Auditors">#</a></h3>
+<ol>
+<li><a href="security-requirements.html">Security Requirements</a> — Kernel vs. user-space threat posture.</li>
+<li><a href="security-model-deep-dive.html">Security Model Deep Dive</a> — Threat matrix and defense-in-depth guarantees.</li>
+<li><a href="license-compliance-deep.html">License Compliance Deep Dive</a> — GPLv3 legal and verifier audit trail.</li>
+<li><a href="roadmap-features-deep.html">Roadmap Features Deep Dive</a> — Network monitoring and File Integrity Monitoring (FIM).</li>
+</ol>
+        </article>
+
+        <div class="doc-pagination">
+<div class="pagination-spacer"></div>
+
+      <a href="architecture-overview.html" class="pagination-card next-card">
+        <span class="pagination-label">
+          Next
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </span>
+        <span class="pagination-title">Architecture Overview</span>
+      </a>
+</div>
+
+        <footer class="docs-footer">
+          <div class="footer-left">
+            <span>GhostRing eBPF Security Subsystem • Licensed under GPLv3</span>
+          </div>
+          <div class="footer-right">
+            <a href="#top" class="back-to-top-btn">Back to top ↑</a>
+          </div>
+        </footer>
+      </div>
+    </main>
+
+    <!-- Right "On This Page" Sidebar -->
+    <aside class="docs-toc-aside">
+      <div class="toc-sticky-container">
+        <div class="toc-heading">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+          <span>On this page</span>
+        </div>
+        <ul class="toc-list">
+
+      <li class="toc-item toc-item-h2">
+        <a href="#documentation-index" class="toc-link" data-heading="documentation-index">Documentation Index</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#1-foundational-architecture-environment" class="toc-link" data-heading="1-foundational-architecture-environment">1. Foundational Architecture &amp;amp; Environment</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#2-kernel-space-ebpf-engineering" class="toc-link" data-heading="2-kernel-space-ebpf-engineering">2. Kernel Space &amp;amp; eBPF Engineering</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#3-telemetry-user-space-pipeline" class="toc-link" data-heading="3-telemetry-user-space-pipeline">3. Telemetry &amp;amp; User Space Pipeline</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#4-security-compliance-governance" class="toc-link" data-heading="4-security-compliance-governance">4. Security, Compliance &amp;amp; Governance</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#5-quality-assurance-operations-roadmap" class="toc-link" data-heading="5-quality-assurance-operations-roadmap">5. Quality Assurance, Operations &amp;amp; Roadmap</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#cross-reference-matrix" class="toc-link" data-heading="cross-reference-matrix">Cross-Reference Matrix</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#recommended-reading-paths" class="toc-link" data-heading="recommended-reading-paths">Recommended Reading Paths</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#1-new-contributor-onboarding" class="toc-link" data-heading="1-new-contributor-onboarding">1. New Contributor Onboarding</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#2-kernel-ebpf-engineers" class="toc-link" data-heading="2-kernel-ebpf-engineers">2. Kernel &amp;amp; eBPF Engineers</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#3-systems-daemon-developers" class="toc-link" data-heading="3-systems-daemon-developers">3. Systems &amp;amp; Daemon Developers</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#4-security-architects-auditors" class="toc-link" data-heading="4-security-architects-auditors">4. Security Architects &amp;amp; Auditors</a>
+      </li>
+</ul>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Interactive Search Modal -->
+  <div id="search-modal" class="search-modal" aria-hidden="true" role="dialog">
+    <div class="search-modal-backdrop"></div>
+    <div class="search-modal-box">
+      <div class="search-input-wrapper">
+        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="search-input" class="search-input" placeholder="Search documentation, topics, APIs, CLI flags..." autocomplete="off">
+        <button id="search-clear-btn" class="search-clear-btn" aria-label="Clear query">&times;</button>
+      </div>
+      <div id="search-results" class="search-results">
+        <div class="search-initial-state">Type a keyword to search docs...</div>
+      </div>
+      <div class="search-modal-footer">
+        <span class="search-hint"><kbd>↑</kbd><kbd>↓</kbd> to navigate</span>
+        <span class="search-hint"><kbd>Enter</kbd> to select</span>
+        <span class="search-hint"><kbd>Esc</kbd> to close</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/search-index.js"></script>
+  <script src="assets/docs.js"></script>
+</body>
+</html>

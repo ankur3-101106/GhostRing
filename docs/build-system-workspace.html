@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GhostRing Build System and Workspace Deep Dive | GhostRing Documentation</title>
+  <meta name="description" content="Root Cargo workspace configuration, compilation targets (bpfel-unknown-none), bpf-linker integration, and CI/CD pipelines. - GhostRing Ring 0 eBPF Telemetry Engine">
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+  <link rel="stylesheet" href="assets/docs.css">
+  <script>
+    (function() {
+      const stored = localStorage.getItem('ghostring_docs_theme');
+      if (stored) {
+        document.documentElement.setAttribute('data-theme', stored);
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+</head>
+<body class="docs-body">
+
+  <!-- Top Navigation Bar -->
+  <header class="top-nav">
+    <div class="top-nav-inner">
+      <div class="nav-left">
+        <button id="mobile-sidebar-toggle" class="nav-icon-btn mobile-only" aria-label="Open Sidebar Menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+        <a href="index.html" class="brand-link">
+          <img src="assets/logo.svg" alt="GhostRing Logo" class="brand-logo" width="32" height="32">
+          <div class="brand-info">
+            <span class="brand-name">GhostRing</span>
+            <span class="brand-tag">Ring 0 Telemetry</span>
+          </div>
+        </a>
+        <span class="version-pill">v0.1.0</span>
+      </div>
+
+      <div class="nav-center">
+        <button id="search-trigger-btn" class="search-trigger" type="button" aria-label="Search documentation">
+          <svg class="search-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <span class="search-placeholder">Search documentation...</span>
+          <span class="search-shortcut"><kbd>Ctrl</kbd><kbd>K</kbd></span>
+        </button>
+      </div>
+
+      <div class="nav-right">
+        <button id="theme-toggle" class="nav-icon-btn" type="button" aria-label="Toggle light/dark theme" title="Toggle theme">
+          <svg class="theme-icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+          <svg class="theme-icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        </button>
+        <a href="https://github.com/ankur/ghostring" target="_blank" rel="noopener noreferrer" class="nav-icon-btn github-btn" aria-label="GitHub Repository" title="GitHub">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"></path></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Documentation Container -->
+  <div class="docs-layout">
+    
+    <!-- Left Navigation Sidebar -->
+    <aside id="docs-sidebar" class="docs-sidebar">
+      <div class="sidebar-scroller">
+        <nav class="sidebar-nav" aria-label="Main Navigation">
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">Documentation Suite</div>
+      <ul class="sidebar-links">
+        <li>
+          <a href="index.html" class="sidebar-link">
+            <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            <span>Documentation Hub</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">01</span>
+        <span class="group-title">Foundational Architecture & Environment</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="architecture-overview.html" class="sidebar-link" title="Architecture Overview">
+            <span class="link-bullet"></span>
+            <span class="link-text">Architecture Overview</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="development-environment.html" class="sidebar-link" title="Development Environment">
+            <span class="link-bullet"></span>
+            <span class="link-text">Development Environment</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ebpf-fundamentals.html" class="sidebar-link" title="eBPF Fundamentals">
+            <span class="link-bullet"></span>
+            <span class="link-text">eBPF Fundamentals</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="kernel-instrumentation.html" class="sidebar-link" title="Kernel Instrumentation">
+            <span class="link-bullet"></span>
+            <span class="link-text">Kernel Instrumentation</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">02</span>
+        <span class="group-title">Kernel Space & eBPF Engineering</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="ebpf-internals.html" class="sidebar-link" title="eBPF Internals &amp; Bytecode">
+            <span class="link-bullet"></span>
+            <span class="link-text">eBPF Internals &amp; Bytecode</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="aya-framework.html" class="sidebar-link" title="Aya Framework">
+            <span class="link-bullet"></span>
+            <span class="link-text">Aya Framework</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="btf-co-re-deep-dive.html" class="sidebar-link" title="BTF &amp; CO-RE Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">BTF &amp; CO-RE Deep Dive</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ghostring-common-structs.html" class="sidebar-link" title="ghostring-common Structs">
+            <span class="link-bullet"></span>
+            <span class="link-text">ghostring-common Structs</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">03</span>
+        <span class="group-title">Telemetry & User Space Pipeline</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="event-transport.html" class="sidebar-link" title="Event Transport">
+            <span class="link-bullet"></span>
+            <span class="link-text">Event Transport</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="perf-buffer-internals.html" class="sidebar-link" title="Perf Buffer Internals">
+            <span class="link-bullet"></span>
+            <span class="link-text">Perf Buffer Internals</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ghostring-user-daemon.html" class="sidebar-link" title="ghostring User Daemon">
+            <span class="link-bullet"></span>
+            <span class="link-text">ghostring User Daemon</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">04</span>
+        <span class="group-title">Security, Compliance & Governance</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="security-requirements.html" class="sidebar-link" title="Security Requirements">
+            <span class="link-bullet"></span>
+            <span class="link-text">Security Requirements</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="security-model-deep-dive.html" class="sidebar-link" title="Security Model Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">Security Model Deep Dive</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="license-compliance-deep.html" class="sidebar-link" title="License Compliance Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">License Compliance Deep Dive</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">05</span>
+        <span class="group-title">Quality Assurance, Operations & Roadmap</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="build-system-workspace.html" class="sidebar-link active" title="Build System &amp; Workspace">
+            <span class="link-bullet"></span>
+            <span class="link-text">Build System &amp; Workspace</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="testing-strategy.html" class="sidebar-link" title="Testing Strategy">
+            <span class="link-bullet"></span>
+            <span class="link-text">Testing Strategy</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="troubleshooting-guide.html" class="sidebar-link" title="Troubleshooting Guide">
+            <span class="link-bullet"></span>
+            <span class="link-text">Troubleshooting Guide</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="roadmap-features-deep.html" class="sidebar-link" title="Roadmap Features Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">Roadmap Features Deep Dive</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+</nav>
+      </div>
+    </aside>
+    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+    <!-- Center Content Article -->
+    <main class="docs-main">
+      <div class="content-wrapper">
+        
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <a href="index.html" class="crumb-link">Docs</a>
+      <span class="crumb-sep">/</span>
+      <span class="crumb-cat">Quality Assurance, Operations &amp; Roadmap</span>
+      <span class="crumb-sep">/</span>
+      <span class="crumb-active">GhostRing Build System and Workspace Deep Dive</span>
+    </nav>
+    
+        
+        <article class="markdown-body">
+          <h1 id="ghostring-build-system-and-workspace-deep-dive">GhostRing Build System and Workspace Deep Dive <a href="#ghostring-build-system-and-workspace-deep-dive" class="heading-anchor" aria-label="Permalink to GhostRing Build System and Workspace Deep Dive">#</a></h1>
+<h2 id="workspace-structure-and-cargo-configuration">Workspace Structure and Cargo Configuration <a href="#workspace-structure-and-cargo-configuration" class="heading-anchor" aria-label="Permalink to Workspace Structure and Cargo Configuration">#</a></h2>
+<h3 id="root-cargotoml">Root Cargo.toml <a href="#root-cargotoml" class="heading-anchor" aria-label="Permalink to Root Cargo.toml">#</a></h3>
+<div class="code-block-container" data-lang="TOML">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">TOML</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># /home/ankur/git/ghostring/Cargo.toml</span>
+<span class="k">[workspace]</span>
+
+<span class="n">members</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;ghostring-common&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;ghostring-ebpf&quot;</span><span class="p">,</span><span class="w"> </span>
+<span class="w">    </span><span class="s2">&quot;ghostring&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="n">resolve</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;lowest&quot;</span><span class="w">  </span><span class="err">//</span><span class="w"> </span><span class="n">or</span><span class="w"> </span><span class="s2">&quot;highest&quot;</span><span class="w"> </span><span class="n">depending</span><span class="w"> </span><span class="n">on</span><span class="w"> </span><span class="n">dependency</span><span class="w"> </span><span class="n">needs</span>
+</code></pre>
+</div>
+<h3 id="member-crate-structure">Member Crate Structure <a href="#member-crate-structure" class="heading-anchor" aria-label="Permalink to Member Crate Structure">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Path</th>
+<th>crate-type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ghostring-common</code></td>
+<td><code>ghostring-common/</code></td>
+<td><code>cdylib</code></td>
+<td>C-compatible structs, shared constants</td>
+</tr>
+<tr>
+<td><code>ghostring-ebpf</code></td>
+<td><code>ghostring-ebpf/</code></td>
+<td><code>no_std cdylib</code></td>
+<td>eBPF bytecode, BPF programs</td>
+</tr>
+<tr>
+<td><code>ghostring</code></td>
+<td><code>ghostring/</code></td>
+<td><code>bin</code> (with features)</td>
+<td>User-space daemon, CLI</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="workspace-dependencies">Workspace Dependencies <a href="#workspace-dependencies" class="heading-anchor" aria-label="Permalink to Workspace Dependencies">#</a></h3>
+<div class="code-block-container" data-lang="TOML">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">TOML</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># Root Cargo.toml - shared dependencies</span>
+<span class="k">[dependencies]</span>
+<span class="c1"># No direct deps at workspace level;</span>
+<span class="c1"># each crate declares its own</span>
+
+<span class="c1"># ghostring-common has ZERO dependencies</span>
+<span class="c1"># ghostring-ebpf depends on aya-ebpf</span>
+<span class="c1"># ghostring depends on aya, tokio, clap</span>
+</code></pre>
+</div>
+<h3 id="per-crate-cargotoml">Per-Crate Cargo.toml <a href="#per-crate-cargotoml" class="heading-anchor" aria-label="Permalink to Per-Crate Cargo.toml">#</a></h3>
+<h4 id="ghostring-commoncargotoml">ghostring-common/Cargo.toml <a href="#ghostring-commoncargotoml" class="heading-anchor" aria-label="Permalink to ghostring-common/Cargo.toml">#</a></h4>
+<div class="code-block-container" data-lang="TOML">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">TOML</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="k">[package]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ghostring-common&quot;</span>
+<span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span>
+<span class="n">crate-type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;cdylib&quot;</span><span class="p">]</span>
+
+<span class="c1"># No dependencies - self-contained C-compatible types</span>
+<span class="c1"># No std, no external crates</span>
+</code></pre>
+</div>
+<h4 id="ghostring-ebpfcargotoml">ghostring-ebpf/Cargo.toml <a href="#ghostring-ebpfcargotoml" class="heading-anchor" aria-label="Permalink to ghostring-ebpf/Cargo.toml">#</a></h4>
+<div class="code-block-container" data-lang="TOML">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">TOML</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="k">[package]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ghostring-ebpf&quot;</span>
+<span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span>
+<span class="n">crate-type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;cdylib&quot;</span><span class="p">]</span>
+
+<span class="k">[dependencies]</span>
+<span class="n">aya</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.5&quot;</span>
+<span class="n">aya-ebpf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.5&quot;</span>
+<span class="c1"># bpf-linker is a standalone cargo utility, not a rust dep</span>
+</code></pre>
+</div>
+<h4 id="ghostringcargotoml">ghostring/Cargo.toml <a href="#ghostringcargotoml" class="heading-anchor" aria-label="Permalink to ghostring/Cargo.toml">#</a></h4>
+<div class="code-block-container" data-lang="TOML">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">TOML</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="k">[package]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ghostring&quot;</span>
+<span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span>
+<span class="n">edition</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;2021&quot;</span>
+
+<span class="k">[dependencies]</span>
+<span class="n">tokio</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">version</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;1.38&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">features</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;rt-multi-thread&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;macros&quot;</span><span class="p">]</span><span class="w"> </span><span class="p">}</span>
+<span class="n">aya</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.5&quot;</span>
+<span class="n">aya-poll</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.1&quot;</span>
+<span class="n">clap</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">version</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;4.0&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">features</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;derive&quot;</span><span class="p">]</span><span class="w"> </span><span class="p">}</span>
+<span class="n">tracing</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.1.38&quot;</span>
+<span class="n">tracing-subscriber</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.3.17&quot;</span>
+
+<span class="c1"># Optional features</span>
+<span class="k">[features]</span>
+<span class="n">json-export</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;serde&quot;</span><span class="p">]</span>
+</code></pre>
+</div>
+<h2 id="build-commands-and-workflow">Build Commands and Workflow <a href="#build-commands-and-workflow" class="heading-anchor" aria-label="Permalink to Build Commands and Workflow">#</a></h2>
+<div class="callout callout-tip">
+  <div class="callout-header">
+    <svg class="callout-icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M12 2a7 7 0 0 0-4 12.7v1.3h8v-1.3A7 7 0 0 0 12 2z"></path></svg>
+    <span class="callout-title">Tip</span>
+  </div>
+  <div class="callout-body">
+    <p><strong>Isolated Environment Execution</strong>: Always activate the isolated in-repository build environment (<code>source .build-env/activate</code>) or prefix commands with <code>./.build-env/run.sh</code> to ensure <code>rustc</code> nightly and <code>bpf-linker</code> are utilized.</p>
+  </div>
+</div>
+
+<h4 id="step-1-build-ebpf-bytecode">Step 1: Build eBPF Bytecode <a href="#step-1-build-ebpf-bytecode" class="heading-anchor" aria-label="Permalink to Step 1: Build eBPF Bytecode">#</a></h4>
+<div class="code-block-container" data-lang="BASH">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">BASH</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># From repository root</span>
+<span class="nb">cd</span><span class="w"> </span>ghostring-ebpf
+cargo<span class="w"> </span>build<span class="w"> </span>--release
+
+<span class="c1"># Output: target/bpfel-unknown-none/release/ghostring_ebpf</span>
+<span class="c1"># This is the raw BPF ELF bytecode ready for kernel loading</span>
+</code></pre>
+</div>
+<p><strong>What happens internally:</strong></p>
+<ol>
+<li><code>cargo build</code> compiles Rust to LLVM IR</li>
+<li><code>bpf-linker</code> processes the ELF:
+   - Reorganizes sections for <code>bpfel-unknown-none</code>
+   - Embeds BTF metadata (if available)
+   - Adds <code>__license</code> section from package metadata
+   - Outputs BPF-targeted ELF</li>
+<li>Result is loadable eBPF bytecode</li>
+</ol>
+<h4 id="step-2-build-user-space-daemon">Step 2: Build User-Space Daemon <a href="#step-2-build-user-space-daemon" class="heading-anchor" aria-label="Permalink to Step 2: Build User-Space Daemon">#</a></h4>
+<div class="code-block-container" data-lang="BASH">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">BASH</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># From repository root</span>
+<span class="nb">cd</span><span class="w"> </span>ghostring
+cargo<span class="w"> </span>build<span class="w"> </span>--release
+</code></pre>
+</div>
+<p><strong>What happens internally:</strong></p>
+<ol>
+<li>Compiles Rust with nightly toolchain</li>
+<li>Links against <code>aya</code>, <code>tokio</code>, <code>clap</code></li>
+<li>Produces executable at <code>target/release/ghostring</code></li>
+<li>Requires <code>sudo</code> for eBPF loading at runtime</li>
+</ol>
+<h4 id="step-3-build-entire-workspace">Step 3: Build Entire Workspace <a href="#step-3-build-entire-workspace" class="heading-anchor" aria-label="Permalink to Step 3: Build Entire Workspace">#</a></h4>
+<div class="code-block-container" data-lang="BASH">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">BASH</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># From repository root</span>
+cargo<span class="w"> </span>build<span class="w"> </span>--release<span class="w"> </span>--workspace
+</code></pre>
+</div>
+<p><strong>What this does:</strong></p>
+<ol>
+<li>Builds all three crates in dependency order</li>
+<li>Resolves workspace conflicts</li>
+<li>Ensures consistent versions</li>
+<li>May build common twice (once for each dependent)</li>
+</ol>
+<h3 id="incremental-builds">Incremental Builds <a href="#incremental-builds" class="heading-anchor" aria-label="Permalink to Incremental Builds">#</a></h3>
+<div class="code-block-container" data-lang="BASH">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">BASH</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># Only rebuild changed crates</span>
+cargo<span class="w"> </span>build<span class="w"> </span>--release<span class="w">  </span><span class="c1"># From root, builds what&#39;s needed</span>
+
+<span class="c1"># Force rebuild of specific crate</span>
+cargo<span class="w"> </span>build<span class="w"> </span>--release<span class="w"> </span>--package<span class="w"> </span>ghostring-ebpf
+
+<span class="c1"># Clean and rebuild from scratch</span>
+cargo<span class="w"> </span>clean<span class="w"> </span>--release<span class="w"> </span>--workspace
+</code></pre>
+</div>
+<h3 id="build-scripts-buildrs">Build Scripts (build.rs) <a href="#build-scripts-buildrs" class="heading-anchor" aria-label="Permalink to Build Scripts (build.rs)">#</a></h3>
+<h4 id="ghostring-common-none-required">ghostring-common - None Required <a href="#ghostring-common-none-required" class="heading-anchor" aria-label="Permalink to ghostring-common - None Required">#</a></h4>
+<div class="code-block-container" data-lang="TOML">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">TOML</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># No build.rs needed - zero dependencies</span>
+<span class="c1"># All structs are plain #[repr(C)] types</span>
+</code></pre>
+</div>
+<h4 id="ghostring-ebpf-linker-configuration">ghostring-ebpf - Linker Configuration <a href="#ghostring-ebpf-linker-configuration" class="heading-anchor" aria-label="Permalink to ghostring-ebpf - Linker Configuration">#</a></h4>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// ghostring-ebpf/build.rs</span>
+<span class="k">use</span><span class="w"> </span><span class="n">std</span><span class="p">::</span><span class="n">env</span><span class="p">;</span>
+<span class="k">use</span><span class="w"> </span><span class="n">std</span><span class="p">::</span><span class="n">fs</span><span class="p">;</span>
+
+<span class="k">fn</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Tell cargo to tell rustc to link the bpf-library</span>
+<span class="w">    </span><span class="c1">// bpf-linker is invoked as a cargo subcommand, not a lib</span>
+
+<span class="w">    </span><span class="c1">// Emit BPF-specific metadata</span>
+<span class="w">    </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;cargo:rustc-link-arg-bpf=--target=bpfel-unknown-none&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;cargo:rustc-link-arg-bpf=--tbdf=0x0000:00:00.0&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// BTF embedding if available</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="n">std</span><span class="p">::</span><span class="n">path</span><span class="p">::</span><span class="n">Path</span><span class="p">::</span><span class="n">new</span><span class="p">(</span><span class="s">&quot;/sys/kernel/btf/vmlinux&quot;</span><span class="p">).</span><span class="n">exists</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;cargo:rustc-link-arg-bpf=--btf&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// License string - CRITICAL</span>
+<span class="w">    </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;cargo:rustc-link-arg-bpf=--license=GPLv3&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h4 id="ghostring-no-buildrs-needed">ghostring - No build.rs needed <a href="#ghostring-no-buildrs-needed" class="heading-anchor" aria-label="Permalink to ghostring - No build.rs needed">#</a></h4>
+<p>Standard compilation, links against downloaded dependencies.</p>
+<h2 id="target-specification">Target Specification <a href="#target-specification" class="heading-anchor" aria-label="Permalink to Target Specification">#</a></h2>
+<h3 id="bpfel-unknown-none-details"><code>bpfel-unknown-none</code> Details <a href="#bpfel-unknown-none-details" class="heading-anchor" aria-label="Permalink to bpfel-unknown-none Details">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Endian</strong></td>
+<td>Little-endian (<code>bpfel</code>)</td>
+</tr>
+<tr>
+<td><strong>OS</strong></td>
+<td>None (<code>-no-os</code>) - freestanding</td>
+</tr>
+<tr>
+<td><strong>Arch</strong></td>
+<td>BPF (Berkeley Packet Filter)</td>
+</tr>
+<tr>
+<td><strong>Standard</strong></td>
+<td><code>no_std</code> compatible</td>
+</tr>
+<tr>
+<td><strong>Linker</strong></td>
+<td><code>bpf-linker</code> cargo utility</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="target-json-target-specification">Target JSON (target specification) <a href="#target-json-target-specification" class="heading-anchor" aria-label="Permalink to Target JSON (target specification)">#</a></h3>
+<div class="code-block-container" data-lang="JSON">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">JSON</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;targets&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;bpfel-unknown-none&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;architecture&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;bpf&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;object_format&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;elf&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;all_targets&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;bpfel-unknown-none&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">          </span><span class="nt">&quot;cpu&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;generic&quot;</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">&quot;features&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;+mul&quot;</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">&quot;max_cpu_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h3 id="custom-target-profile">Custom Target Profile <a href="#custom-target-profile" class="heading-anchor" aria-label="Permalink to Custom Target Profile">#</a></h3>
+<div class="code-block-container" data-lang="TOML">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">TOML</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># ~/.cargo/config.toml or ghostring-ebpf/Cargo.toml</span>
+<span class="k">[target.bpfel-unknown-none]</span>
+<span class="n">rustflags</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;--emit=obj&quot;</span><span class="p">,</span><span class="w">     </span><span class="c1"># Emit object file</span>
+<span class="w">    </span><span class="s2">&quot;--crate-type=cdylib&quot;</span><span class="p">,</span><span class="w">  </span><span class="c1"># CDLL-compatible</span>
+<span class="w">    </span><span class="s2">&quot;--divernone&quot;</span><span class="p">,</span><span class="w">    </span><span class="c1"># No standard library</span>
+<span class="w">    </span><span class="s2">&quot;-C&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;link-arg=-shared&quot;</span><span class="p">,</span><span class="w">  </span><span class="c1"># Linker options</span>
+<span class="p">]</span>
+</code></pre>
+</div>
+<h2 id="cicd-integration">CI/CD Integration <a href="#cicd-integration" class="heading-anchor" aria-label="Permalink to CI/CD Integration">#</a></h2>
+<h3 id="github-actions-workflow">GitHub Actions Workflow <a href="#github-actions-workflow" class="heading-anchor" aria-label="Permalink to GitHub Actions Workflow">#</a></h3>
+<div class="code-block-container" data-lang="YAML">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">YAML</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># .github/workflows/build.yml</span>
+<span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GhostRing CI</span>
+
+<span class="nt">on</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">push</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">branches</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">main</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">pull_request</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">branches</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">main</span><span class="p p-Indicator">]</span>
+
+<span class="nt">jobs</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">build</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+
+<span class="w">        </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v3</span>
+
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Install toolchain</span>
+<span class="w">            </span><span class="l l-Scalar l-Scalar-Plain">run</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">                </span><span class="no">rustup toolchain install nightly --component rust-src</span>
+<span class="w">                </span><span class="no">rustup default nightly</span>
+<span class="w">                </span><span class="no">cargo install bpf-linker</span>
+
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Build eBPF bytecode</span>
+<span class="w">            </span><span class="l l-Scalar l-Scalar-Plain">run</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">                </span><span class="no">cd ghostring-ebpf</span>
+<span class="w">                </span><span class="no">cargo build --release</span>
+
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Build user daemon</span>
+<span class="w">            </span><span class="l l-Scalar l-Scalar-Plain">run</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">                </span><span class="no">cd ghostring</span>
+<span class="w">                </span><span class="no">cargo build --release</span>
+
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Verify workspace build</span>
+<span class="w">            </span><span class="l l-Scalar l-Scalar-Plain">run</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">                </span><span class="no">cargo build --release --workspace</span>
+</code></pre>
+</div>
+<h3 id="verification-steps">Verification Steps <a href="#verification-steps" class="heading-anchor" aria-label="Permalink to Verification Steps">#</a></h3>
+<ol>
+<li><strong>Toolchain check</strong>: Nightly installed with rust-src</li>
+<li><strong>bpf-linker</strong>: Installed and accessible</li>
+<li><strong>eBPF build</strong>: <code>cargo build --release</code> in ghostring-ebpf succeeds</li>
+<li><strong>User build</strong>: <code>cargo build --release</code> in ghostring succeeds</li>
+<li><strong>Workspace</strong>: <code>cargo build --release --workspace</code> succeeds</li>
+<li><strong>Tests</strong>: <code>cargo test --workspace</code> passes (if tests exist)</li>
+</ol>
+<h3 id="docker-build-considerations">Docker Build Considerations <a href="#docker-build-considerations" class="heading-anchor" aria-label="Permalink to Docker Build Considerations">#</a></h3>
+<div class="code-block-container" data-lang="DOCKERFILE">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">DOCKERFILE</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c"># Dockerfile for GhostRing build</span>
+<span class="k">FROM</span><span class="w"> </span><span class="s">ubuntu:22.04</span>
+
+<span class="c"># Install prerequisites</span>
+<span class="k">RUN</span><span class="w"> </span>apt-get<span class="w"> </span>update<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>curl<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>wget<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>gnupg<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>llvm<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>make<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>m4<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>#<span class="w"> </span>Rust<span class="w"> </span>toolchain
+<span class="w">    </span><span class="o">&amp;&amp;</span><span class="w"> </span>curl<span class="w"> </span>--proto<span class="w"> </span><span class="s1">&#39;=https&#39;</span><span class="w"> </span>--tlsv12<span class="w"> </span>-sSf<span class="w"> </span>https://sh.rustup.rs<span class="w"> </span><span class="p">|</span><span class="w"> </span>sh<span class="w"> </span>-s<span class="w"> </span>--<span class="w"> </span>-y<span class="w"> </span>--default-toolchain<span class="w"> </span>none<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="o">&amp;&amp;</span><span class="w"> </span>/root/.cargo/bin/rustup<span class="w"> </span>toolchain<span class="w"> </span>install<span class="w"> </span>nightly<span class="w"> </span>--component<span class="w"> </span>rust-src<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="o">&amp;&amp;</span><span class="w"> </span>/root/.cargo/bin/rustup<span class="w"> </span>default<span class="w"> </span>nightly<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>#<span class="w"> </span>bpf-linker
+<span class="w">    </span><span class="o">&amp;&amp;</span><span class="w"> </span>/root/.cargo/bin/cargo<span class="w"> </span>install<span class="w"> </span>bpf-linker<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>#<span class="w"> </span>Git<span class="w"> </span>clone
+<span class="w">    </span><span class="o">&amp;&amp;</span><span class="w"> </span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/ankur3-101106/GhostRing.git<span class="w"> </span>/ghostring<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>/ghostring
+
+<span class="c"># Build stages</span>
+<span class="k">WORKDIR</span><span class="w"> </span><span class="s">/ghostring/ghostring-ebpf</span>
+<span class="k">RUN</span><span class="w"> </span>cargo<span class="w"> </span>build<span class="w"> </span>--release
+
+<span class="k">WORKDIR</span><span class="w"> </span><span class="s">/ghostring/ghostring</span>
+<span class="k">RUN</span><span class="w"> </span>cargo<span class="w"> </span>build<span class="w"> </span>--release
+
+<span class="k">WORKDIR</span><span class="w"> </span><span class="s">/ghostring</span>
+<span class="c"># Note: Runtime requires sudo + kernel with BTF</span>
+</code></pre>
+</div>
+<h3 id="cross-compilation-considerations">Cross-Compilation Considerations <a href="#cross-compilation-considerations" class="heading-anchor" aria-label="Permalink to Cross-Compilation Considerations">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Feasibility</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Build on x86, run on BPF</strong></td>
+<td>✅ Supported</td>
+<td><code>bpfel-unknown-none</code> target handles this</td>
+</tr>
+<tr>
+<td><strong>Build on ARM64, run on BPF</strong></td>
+<td>✅ Supported</td>
+<td>Same target, different host</td>
+</tr>
+<tr>
+<td><strong>Build on BPF host</strong></td>
+<td>❌ Not possible</td>
+<td>BPF is not a general CPU architecture</td>
+</tr>
+<tr>
+<td><strong>Emulated BPF build</strong></td>
+<td>⚠️ Possible</td>
+<td>QEMU user mode + nightly Rust</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="dependency-management">Dependency Management <a href="#dependency-management" class="heading-anchor" aria-label="Permalink to Dependency Management">#</a></h2>
+<h3 id="semantic-versioning-policy">Semantic Versioning Policy <a href="#semantic-versioning-policy" class="heading-anchor" aria-label="Permalink to Semantic Versioning Policy">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Crate</th>
+<th>Initial Version</th>
+<th>Stability Guarantee</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ghostring-common</code></td>
+<td>0.1.0</td>
+<td>Breaking changes allowed until 1.0.0</td>
+</tr>
+<tr>
+<td><code>ghostring-ebpf</code></td>
+<td>0.1.0</td>
+<td>API compatible within 0.x.y</td>
+</tr>
+<tr>
+<td><code>ghostring</code></td>
+<td>0.1.0</td>
+<td>CLI stable after 0.1.0</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="version-bump-triggers">Version Bump Triggers <a href="#version-bump-triggers" class="heading-anchor" aria-label="Permalink to Version Bump Triggers">#</a></h3>
+<p><strong>Major version (0.x.y → 1.0.0)</strong>:
+- Remove/deprecate struct fields in <code>ghostring-common</code>
+- Change <code>#[repr(C)]</code> layout
+- Remove public API functions</p>
+<p><strong>Minor version (0.x.y → 0.x+1.y)</strong>:
+- Add new fields (with deprecation period)
+- Add new event types
+- Add new CLI flags</p>
+<p><strong>Patch version (0.x.y → 0.x.y+1)</strong>:
+- Bug fixes only
+- Internal refactoring
+- Documentation updates</p>
+<h3 id="cargo-lock-management">Cargo Lock Management <a href="#cargo-lock-management" class="heading-anchor" aria-label="Permalink to Cargo Lock Management">#</a></h3>
+<div class="code-block-container" data-lang="BASH">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">BASH</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># Generate/update lock file</span>
+cargo<span class="w"> </span>generate-lockfile
+
+<span class="c1"># Check for updates (minor/patch only, respecting semver)</span>
+cargo<span class="w"> </span>update
+
+<span class="c1"># Strict lock (no network)</span>
+cargo<span class="w"> </span>build<span class="w"> </span>--frozen
+</code></pre>
+</div>
+<h3 id="avoiding-dependency-conflicts">Avoiding Dependency Conflicts <a href="#avoiding-dependency-conflicts" class="heading-anchor" aria-label="Permalink to Avoiding Dependency Conflicts">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Conflict</th>
+<th>Resolution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>aya</code> version mismatch between crates</td>
+<td>Use workspace root <code>Cargo.toml</code> to pin, or ensure all members use same version</td>
+</tr>
+<tr>
+<td><code>tokio</code> feature flag drift</td>
+<td>Coordinate feature flags across all dependents</td>
+</tr>
+<tr>
+<td><code>clap</code> version differences</td>
+<td>Pin version in root or each member consistently</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="profile-and-release-configuration">Profile and Release Configuration <a href="#profile-and-release-configuration" class="heading-anchor" aria-label="Permalink to Profile and Release Configuration">#</a></h2>
+<h3 id="release-profile">Release Profile <a href="#release-profile" class="heading-anchor" aria-label="Permalink to Release Profile">#</a></h3>
+<div class="code-block-container" data-lang="TOML">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">TOML</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># ghostring-ebpf/Cargo.toml - release profile</span>
+<span class="k">[profile.release]</span>
+<span class="n">opt-level</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;z&quot;</span><span class="w">        </span><span class="c1"># Aggressive optimization</span>
+<span class="n">lto</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="w">             </span><span class="c1"># Link-time optimization</span>
+<span class="n">codegen-units</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="w">      </span><span class="c1"># Single codegen unit (BPF target)</span>
+<span class="n">debug</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="w">              </span><span class="c1"># Keep some debug info</span>
+
+<span class="c1"># Bfloat16/float16 not relevant for BPF</span>
+<span class="c1"># prefer-dynamic still false (static linking preferred)</span>
+</code></pre>
+</div>
+<h3 id="debug-profile">Debug Profile <a href="#debug-profile" class="heading-anchor" aria-label="Permalink to Debug Profile">#</a></h3>
+<div class="code-block-container" data-lang="TOML">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">TOML</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="k">[profile.debug]</span>
+<span class="n">opt-level</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0&quot;</span><span class="w">        </span><span class="c1"># No optimization</span>
+<span class="n">lto</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">codegen-units</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;auto&quot;</span>
+<span class="n">debug</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="w">              </span><span class="c1"># Full debug info</span>
+<span class="n">overflow-checks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">panic</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;abort&quot;</span>
+</code></pre>
+</div>
+<h3 id="nightly-specific-features">Nightly-Specific Features <a href="#nightly-specific-features" class="heading-anchor" aria-label="Permalink to Nightly-Specific Features">#</a></h3>
+<div class="code-block-container" data-lang="TOML">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">TOML</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># Requires nightly Rust</span>
+<span class="k">[profile.release]</span>
+<span class="n">lto</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">codegen-units</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
+
+<span class="c1"># simd nightly feature (if needed for future)</span>
+<span class="k">[features]</span>
+<span class="n">simd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;core::simd&quot;</span><span class="p">]</span>
+</code></pre>
+</div>
+<h2 id="troubleshooting-build-issues">Troubleshooting Build Issues <a href="#troubleshooting-build-issues" class="heading-anchor" aria-label="Permalink to Troubleshooting Build Issues">#</a></h2>
+<h3 id="common-build-errors">Common Build Errors <a href="#common-build-errors" class="heading-anchor" aria-label="Permalink to Common Build Errors">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>"unknown target keyword <code>bpfel-unknown-none</code>"</td>
+<td>Wrong rust-toolchain</td>
+<td><code>rustup default nightly</code>; ensure <code>rust-src</code> component</td>
+</tr>
+<tr>
+<td>"bpf-linker not found"</td>
+<td>Utility not installed</td>
+<td><code>cargo install bpf-linker</code></td>
+</tr>
+<tr>
+<td>"linker <code>ld</code> not found for target bpfel-unknown-none"</td>
+<td>Missing BPF LLVM backend</td>
+<td>Ensure LLVM with BPF target: <code>apt-get install llvm-15-bpf</code></td>
+</tr>
+<tr>
+<td>"failed to parse BTF from vmlinux"</td>
+<td>BTF not enabled in kernel</td>
+<td>Rebuild kernel with <code>CONFIG_BTF=y</code></td>
+</tr>
+<tr>
+<td>"license check failed"</td>
+<td>Missing <code>--license=GPLv3</code> flag</td>
+<td>Add to build.rs: <code>println!("cargo:rustc-link-arg-bpf=--license=GPLv3")</code></td>
+</tr>
+<tr>
+<td>"undefined helper: bpf_ktime_get_ns"</td>
+<td>Helper not available without GPLv3</td>
+<td>Ensure license section is GPLv3</td>
+</tr>
+<tr>
+<td>"failed to acquire <code>target</code>"</td>
+<td>Another build running</td>
+<td><code>cargo clean</code> or wait</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="build-time-optimization">Build Time Optimization <a href="#build-time-optimization" class="heading-anchor" aria-label="Permalink to Build Time Optimization">#</a></h3>
+<div class="code-block-container" data-lang="BASH">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">BASH</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># Parallel build of independent crates</span>
+cargo<span class="w"> </span>build<span class="w"> </span>--release<span class="w"> </span>-p<span class="w"> </span>ghostring-common<span class="w"> </span>-p<span class="w"> </span>ghostring-ebpf<span class="w"> </span>-p<span class="w"> </span>ghostring
+
+<span class="c1"># Only rebuild what changed</span>
+cargo<span class="w"> </span>check<span class="w"> </span>--workspace<span class="w">  </span><span class="c1"># Faster than build, checks for errors</span>
+
+<span class="c1"># Incremental (default) - only rebuild changed</span>
+<span class="c1"># Full clean:</span>
+cargo<span class="w"> </span>clean<span class="w"> </span>--release<span class="w"> </span>--workspace
+<span class="c1"># Then: cargo build --release --workspace</span>
+</code></pre>
+</div>
+<h3 id="verifying-build-correctness">Verifying Build Correctness <a href="#verifying-build-correctness" class="heading-anchor" aria-label="Permalink to Verifying Build Correctness">#</a></h3>
+<div class="code-block-container" data-lang="BASH">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">BASH</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># Check build artifacts exist</span>
+ls<span class="w"> </span>-la<span class="w"> </span>ghostring-ebpf/target/bpfel-unknown-none/release/ghostring_ebpf
+ls<span class="w"> </span>-la<span class="w"> </span>ghostring/target/release/ghostring
+
+<span class="c1"># Verify binary is not empty</span>
+file<span class="w"> </span>ghostring-ebpf/target/bpfel-unknown-none/release/ghostring_ebpf
+<span class="c1"># Should show: ELF 32-bit LSB executable, BPF</span>
+
+<span class="c1"># Check build timestamps</span>
+stat<span class="w"> </span>ghostring-ebpf/target/bpfel-unknown-none/release/ghostring_ebpf
+stat<span class="w"> </span>ghostring/target/release/ghostring
+</code></pre>
+</div>
+<h2 id="development-iteration-workflow">Development Iteration Workflow <a href="#development-iteration-workflow" class="heading-anchor" aria-label="Permalink to Development Iteration Workflow">#</a></h2>
+<h3 id="typical-developer-loop">Typical Developer Loop <a href="#typical-developer-loop" class="heading-anchor" aria-label="Permalink to Typical Developer Loop">#</a></h3>
+<div class="code-block-container" data-lang="BASH">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">BASH</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># 1. Modify eBPF program (ghostring-ebpf/src/probes.rs)</span>
+<span class="c1">#    - Add new tracepoint</span>
+<span class="c1">#    - Change struct in ghostring-common</span>
+<span class="c1">#    - Modify probe logic</span>
+
+<span class="c1"># 2. Rebuild eBPF bytecode</span>
+<span class="nb">cd</span><span class="w"> </span>ghostring-ebpf<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>cargo<span class="w"> </span>build<span class="w"> </span>--release<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>..
+
+<span class="c1"># 3. Rebuild user daemon (picks up new struct layout)</span>
+<span class="nb">cd</span><span class="w"> </span>ghostring<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>cargo<span class="w"> </span>build<span class="w"> </span>--release<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>..
+
+<span class="c1"># 4. Test: trigger syscall, observe daemon output</span>
+sudo<span class="w"> </span>-E<span class="w"> </span>cargo<span class="w"> </span>run<span class="w"> </span>--release
+
+<span class="c1"># 5. Verify: check event fields match expectations</span>
+<span class="c1">#    - pid, uid, command name correct?</span>
+<span class="c1">#    - No truncation issues?</span>
+<span class="c1">#    - Buffer overflows?</span>
+
+<span class="c1"># 6. Commit: git add . &amp;&amp; git commit -m &quot;feat: new probe type&quot;</span>
+</code></pre>
+</div>
+<h3 id="rapid-prototyping">Rapid Prototyping <a href="#rapid-prototyping" class="heading-anchor" aria-label="Permalink to Rapid Prototyping">#</a></h3>
+<div class="code-block-container" data-lang="BASH">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">BASH</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># Don&#39;t rebuild full release for each change</span>
+<span class="c1"># Use cargo check for syntax validation</span>
+cargo<span class="w"> </span>check<span class="w"> </span>--package<span class="w"> </span>ghostring-ebpf
+
+<span class="c1"># Use debug builds for faster iteration</span>
+cargo<span class="w"> </span>build<span class="w"> </span>--package<span class="w"> </span>ghostring-ebpf<span class="w">  </span><span class="c1"># (no --release flag)</span>
+
+<span class="c1"># Faster polling loop during development</span>
+<span class="c1"># Reduce polling interval in code</span>
+tokio::time::sleep<span class="o">(</span>std::time::Duration::from_millis<span class="o">(</span><span class="m">1</span><span class="o">))</span>.await<span class="p">;</span>
+</code></pre>
+</div>
+<h2 id="related-documentation">Related Documentation <a href="#related-documentation" class="heading-anchor" aria-label="Permalink to Related Documentation">#</a></h2>
+<ul>
+<li><a href="development-environment.html">Development Environment</a> — Toolchain requirements, Rust Nightly installation, and system utilities.</li>
+<li><a href="architecture-overview.html">Architecture Overview</a> — Workspace layout and crate boundary responsibilities.</li>
+<li><a href="ebpf-internals.html">eBPF Internals &amp; Bytecode</a> — Compilation target <code>bpfel-unknown-none</code> and <code>bpf-linker</code> ELF layout.</li>
+<li><a href="ghostring-common-structs.html">ghostring-common Struct Design</a> — C-compatible struct layouts and ABI versioning.</li>
+<li><a href="ghostring-user-daemon.html">ghostring User Daemon</a> — Tokio user-space daemon build and runtime configurations.</li>
+<li><a href="aya-framework.html">Aya Framework</a> — Dependency specification and integration with the Aya framework ecosystem.</li>
+<li><a href="license-compliance-deep.html">License Compliance Deep Dive</a> — Linking <code>--license=GPLv3</code> in <code>build.rs</code> to satisfy kernel verifier checks.</li>
+<li><a href="testing-strategy.html">Testing Strategy</a> — Cargo workspace test runs, clippy checks, and automated CI/CD gates.</li>
+<li><a href="troubleshooting-guide.html">Troubleshooting Guide</a> — Resolving compiler errors, linker flags, and target mismatch issues.</li>
+</ul>
+        </article>
+
+        <div class="doc-pagination">
+
+      <a href="license-compliance-deep.html" class="pagination-card prev-card">
+        <span class="pagination-label">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          Previous
+        </span>
+        <span class="pagination-title">GhostRing License Compliance Deep Dive</span>
+      </a>
+
+      <a href="testing-strategy.html" class="pagination-card next-card">
+        <span class="pagination-label">
+          Next
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </span>
+        <span class="pagination-title">Testing Strategy</span>
+      </a>
+</div>
+
+        <footer class="docs-footer">
+          <div class="footer-left">
+            <span>GhostRing eBPF Security Subsystem • Licensed under GPLv3</span>
+          </div>
+          <div class="footer-right">
+            <a href="#top" class="back-to-top-btn">Back to top ↑</a>
+          </div>
+        </footer>
+      </div>
+    </main>
+
+    <!-- Right "On This Page" Sidebar -->
+    <aside class="docs-toc-aside">
+      <div class="toc-sticky-container">
+        <div class="toc-heading">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+          <span>On this page</span>
+        </div>
+        <ul class="toc-list">
+
+      <li class="toc-item toc-item-h2">
+        <a href="#workspace-structure-and-cargo-configuration" class="toc-link" data-heading="workspace-structure-and-cargo-configuration">Workspace Structure and Cargo Configuration</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#root-cargotoml" class="toc-link" data-heading="root-cargotoml">Root Cargo.toml</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#member-crate-structure" class="toc-link" data-heading="member-crate-structure">Member Crate Structure</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#workspace-dependencies" class="toc-link" data-heading="workspace-dependencies">Workspace Dependencies</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#per-crate-cargotoml" class="toc-link" data-heading="per-crate-cargotoml">Per-Crate Cargo.toml</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#build-commands-and-workflow" class="toc-link" data-heading="build-commands-and-workflow">Build Commands and Workflow</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#incremental-builds" class="toc-link" data-heading="incremental-builds">Incremental Builds</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#build-scripts-buildrs" class="toc-link" data-heading="build-scripts-buildrs">Build Scripts (build.rs)</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#target-specification" class="toc-link" data-heading="target-specification">Target Specification</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#bpfel-unknown-none-details" class="toc-link" data-heading="bpfel-unknown-none-details">bpfel-unknown-none Details</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#target-json-target-specification" class="toc-link" data-heading="target-json-target-specification">Target JSON (target specification)</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#custom-target-profile" class="toc-link" data-heading="custom-target-profile">Custom Target Profile</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#cicd-integration" class="toc-link" data-heading="cicd-integration">CI/CD Integration</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#github-actions-workflow" class="toc-link" data-heading="github-actions-workflow">GitHub Actions Workflow</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#verification-steps" class="toc-link" data-heading="verification-steps">Verification Steps</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#docker-build-considerations" class="toc-link" data-heading="docker-build-considerations">Docker Build Considerations</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#cross-compilation-considerations" class="toc-link" data-heading="cross-compilation-considerations">Cross-Compilation Considerations</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#dependency-management" class="toc-link" data-heading="dependency-management">Dependency Management</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#semantic-versioning-policy" class="toc-link" data-heading="semantic-versioning-policy">Semantic Versioning Policy</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#version-bump-triggers" class="toc-link" data-heading="version-bump-triggers">Version Bump Triggers</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#cargo-lock-management" class="toc-link" data-heading="cargo-lock-management">Cargo Lock Management</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#avoiding-dependency-conflicts" class="toc-link" data-heading="avoiding-dependency-conflicts">Avoiding Dependency Conflicts</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#profile-and-release-configuration" class="toc-link" data-heading="profile-and-release-configuration">Profile and Release Configuration</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#release-profile" class="toc-link" data-heading="release-profile">Release Profile</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#debug-profile" class="toc-link" data-heading="debug-profile">Debug Profile</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#nightly-specific-features" class="toc-link" data-heading="nightly-specific-features">Nightly-Specific Features</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#troubleshooting-build-issues" class="toc-link" data-heading="troubleshooting-build-issues">Troubleshooting Build Issues</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#common-build-errors" class="toc-link" data-heading="common-build-errors">Common Build Errors</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#build-time-optimization" class="toc-link" data-heading="build-time-optimization">Build Time Optimization</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#verifying-build-correctness" class="toc-link" data-heading="verifying-build-correctness">Verifying Build Correctness</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#development-iteration-workflow" class="toc-link" data-heading="development-iteration-workflow">Development Iteration Workflow</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#typical-developer-loop" class="toc-link" data-heading="typical-developer-loop">Typical Developer Loop</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#rapid-prototyping" class="toc-link" data-heading="rapid-prototyping">Rapid Prototyping</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#related-documentation" class="toc-link" data-heading="related-documentation">Related Documentation</a>
+      </li>
+</ul>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Interactive Search Modal -->
+  <div id="search-modal" class="search-modal" aria-hidden="true" role="dialog">
+    <div class="search-modal-backdrop"></div>
+    <div class="search-modal-box">
+      <div class="search-input-wrapper">
+        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="search-input" class="search-input" placeholder="Search documentation, topics, APIs, CLI flags..." autocomplete="off">
+        <button id="search-clear-btn" class="search-clear-btn" aria-label="Clear query">&times;</button>
+      </div>
+      <div id="search-results" class="search-results">
+        <div class="search-initial-state">Type a keyword to search docs...</div>
+      </div>
+      <div class="search-modal-footer">
+        <span class="search-hint"><kbd>↑</kbd><kbd>↓</kbd> to navigate</span>
+        <span class="search-hint"><kbd>Enter</kbd> to select</span>
+        <span class="search-hint"><kbd>Esc</kbd> to close</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/search-index.js"></script>
+  <script src="assets/docs.js"></script>
+</body>
+</html>

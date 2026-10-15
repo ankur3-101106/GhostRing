@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GhostRing Testing Strategy Deep Dive | GhostRing Documentation</title>
+  <meta name="description" content="Four-layer testing pyramid (unit, struct layout, integration, and E2E testing), benchmark suites, and release quality gates. - GhostRing Ring 0 eBPF Telemetry Engine">
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+  <link rel="stylesheet" href="assets/docs.css">
+  <script>
+    (function() {
+      const stored = localStorage.getItem('ghostring_docs_theme');
+      if (stored) {
+        document.documentElement.setAttribute('data-theme', stored);
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+</head>
+<body class="docs-body">
+
+  <!-- Top Navigation Bar -->
+  <header class="top-nav">
+    <div class="top-nav-inner">
+      <div class="nav-left">
+        <button id="mobile-sidebar-toggle" class="nav-icon-btn mobile-only" aria-label="Open Sidebar Menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+        <a href="index.html" class="brand-link">
+          <img src="assets/logo.svg" alt="GhostRing Logo" class="brand-logo" width="32" height="32">
+          <div class="brand-info">
+            <span class="brand-name">GhostRing</span>
+            <span class="brand-tag">Ring 0 Telemetry</span>
+          </div>
+        </a>
+        <span class="version-pill">v0.1.0</span>
+      </div>
+
+      <div class="nav-center">
+        <button id="search-trigger-btn" class="search-trigger" type="button" aria-label="Search documentation">
+          <svg class="search-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <span class="search-placeholder">Search documentation...</span>
+          <span class="search-shortcut"><kbd>Ctrl</kbd><kbd>K</kbd></span>
+        </button>
+      </div>
+
+      <div class="nav-right">
+        <button id="theme-toggle" class="nav-icon-btn" type="button" aria-label="Toggle light/dark theme" title="Toggle theme">
+          <svg class="theme-icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+          <svg class="theme-icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        </button>
+        <a href="https://github.com/ankur/ghostring" target="_blank" rel="noopener noreferrer" class="nav-icon-btn github-btn" aria-label="GitHub Repository" title="GitHub">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"></path></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Documentation Container -->
+  <div class="docs-layout">
+    
+    <!-- Left Navigation Sidebar -->
+    <aside id="docs-sidebar" class="docs-sidebar">
+      <div class="sidebar-scroller">
+        <nav class="sidebar-nav" aria-label="Main Navigation">
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">Documentation Suite</div>
+      <ul class="sidebar-links">
+        <li>
+          <a href="index.html" class="sidebar-link">
+            <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            <span>Documentation Hub</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">01</span>
+        <span class="group-title">Foundational Architecture & Environment</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="architecture-overview.html" class="sidebar-link" title="Architecture Overview">
+            <span class="link-bullet"></span>
+            <span class="link-text">Architecture Overview</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="development-environment.html" class="sidebar-link" title="Development Environment">
+            <span class="link-bullet"></span>
+            <span class="link-text">Development Environment</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ebpf-fundamentals.html" class="sidebar-link" title="eBPF Fundamentals">
+            <span class="link-bullet"></span>
+            <span class="link-text">eBPF Fundamentals</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="kernel-instrumentation.html" class="sidebar-link" title="Kernel Instrumentation">
+            <span class="link-bullet"></span>
+            <span class="link-text">Kernel Instrumentation</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">02</span>
+        <span class="group-title">Kernel Space & eBPF Engineering</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="ebpf-internals.html" class="sidebar-link" title="eBPF Internals &amp; Bytecode">
+            <span class="link-bullet"></span>
+            <span class="link-text">eBPF Internals &amp; Bytecode</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="aya-framework.html" class="sidebar-link" title="Aya Framework">
+            <span class="link-bullet"></span>
+            <span class="link-text">Aya Framework</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="btf-co-re-deep-dive.html" class="sidebar-link" title="BTF &amp; CO-RE Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">BTF &amp; CO-RE Deep Dive</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ghostring-common-structs.html" class="sidebar-link" title="ghostring-common Structs">
+            <span class="link-bullet"></span>
+            <span class="link-text">ghostring-common Structs</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">03</span>
+        <span class="group-title">Telemetry & User Space Pipeline</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="event-transport.html" class="sidebar-link" title="Event Transport">
+            <span class="link-bullet"></span>
+            <span class="link-text">Event Transport</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="perf-buffer-internals.html" class="sidebar-link" title="Perf Buffer Internals">
+            <span class="link-bullet"></span>
+            <span class="link-text">Perf Buffer Internals</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ghostring-user-daemon.html" class="sidebar-link" title="ghostring User Daemon">
+            <span class="link-bullet"></span>
+            <span class="link-text">ghostring User Daemon</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">04</span>
+        <span class="group-title">Security, Compliance & Governance</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="security-requirements.html" class="sidebar-link" title="Security Requirements">
+            <span class="link-bullet"></span>
+            <span class="link-text">Security Requirements</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="security-model-deep-dive.html" class="sidebar-link" title="Security Model Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">Security Model Deep Dive</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="license-compliance-deep.html" class="sidebar-link" title="License Compliance Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">License Compliance Deep Dive</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">05</span>
+        <span class="group-title">Quality Assurance, Operations & Roadmap</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="build-system-workspace.html" class="sidebar-link" title="Build System &amp; Workspace">
+            <span class="link-bullet"></span>
+            <span class="link-text">Build System &amp; Workspace</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="testing-strategy.html" class="sidebar-link active" title="Testing Strategy">
+            <span class="link-bullet"></span>
+            <span class="link-text">Testing Strategy</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="troubleshooting-guide.html" class="sidebar-link" title="Troubleshooting Guide">
+            <span class="link-bullet"></span>
+            <span class="link-text">Troubleshooting Guide</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="roadmap-features-deep.html" class="sidebar-link" title="Roadmap Features Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">Roadmap Features Deep Dive</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+</nav>
+      </div>
+    </aside>
+    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+    <!-- Center Content Article -->
+    <main class="docs-main">
+      <div class="content-wrapper">
+        
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <a href="index.html" class="crumb-link">Docs</a>
+      <span class="crumb-sep">/</span>
+      <span class="crumb-cat">Quality Assurance, Operations &amp; Roadmap</span>
+      <span class="crumb-sep">/</span>
+      <span class="crumb-active">GhostRing Testing Strategy Deep Dive</span>
+    </nav>
+    
+        
+        <article class="markdown-body">
+          <h1 id="ghostring-testing-strategy-deep-dive">GhostRing Testing Strategy Deep Dive <a href="#ghostring-testing-strategy-deep-dive" class="heading-anchor" aria-label="Permalink to GhostRing Testing Strategy Deep Dive">#</a></h1>
+<h2 id="testing-philosophy">Testing Philosophy <a href="#testing-philosophy" class="heading-anchor" aria-label="Permalink to Testing Philosophy">#</a></h2>
+<p>GhostRing's testing strategy follows a <strong>pyramid approach</strong> with four layers:</p>
+<div class="code-block-container" data-lang="CODE">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">CODE</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code>┌──────────────────────────────────────────────────────────────┐
+│                    Testing Pyramid                            │
+├──────────────────────────────────────────────────────────────┤
+│                                                               │
+│  Layer 4: End-to-End (rare)                                   │ │
+│  - Full system with kernel, eBPF, daemon                      │ │
+│  - Manual triggering of syscalls                              │ │
+│  - Verified event output                                      │ │
+│                                                               │
+│  Layer 3: Integration (limited CI)                            │ │
+│  - eBPF program loads                                         │ │
+│  - Map creation verified                                      │ │
+│  - Basic functionality checks                                 │ │
+│                                                               │
+│  Layer 2: Unit/Component (frequent)                         │ │
+│  - Struct layout tests                                        │ │
+│  - Compile checks                                             │ │
+│  - Helper function tests (host-side)                          │ │
+│                                                               │
+│  Layer 1: Property-Based / Fuzz (targeted)                    │ │
+│  - eBPF bytecode edge cases                                   │ │
+│  - Verifier compatibility checks                              │ │
+│  - Struct size invariants                                     │ │
+│                                                               │
+└───────────────────────────────────────────────────────────────┘
+</code></pre>
+</div>
+<h2 id="layer-1-unit-tests-ghostring-common">Layer 1: Unit Tests ( ghostring-common) <a href="#layer-1-unit-tests-ghostring-common" class="heading-anchor" aria-label="Permalink to Layer 1: Unit Tests ( ghostring-common)">#</a></h2>
+<h3 id="struct-layout-tests">Struct Layout Tests <a href="#struct-layout-tests" class="heading-anchor" aria-label="Permalink to Struct Layout Tests">#</a></h3>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// ghostring-common/tests/struct_sizes.rs</span>
+
+<span class="k">use</span><span class="w"> </span><span class="n">ghostring_common</span><span class="p">::{</span><span class="n">ExecveEvent</span><span class="p">,</span><span class="w"> </span><span class="n">UidGidEvent</span><span class="p">,</span><span class="w"> </span><span class="n">FileEvent</span><span class="p">};</span>
+
+<span class="k">const</span><span class="w"> </span><span class="n">_</span><span class="p">:</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// These must compile and pass every build</span>
+
+<span class="w">    </span><span class="c1">// ExecveEvent must be exactly 40 bytes (4+4+4+4+8+8+16)</span>
+<span class="w">    </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="n">std</span><span class="p">::</span><span class="n">mem</span><span class="p">::</span><span class="n">size_of</span><span class="p">::</span><span class="o">&lt;</span><span class="n">ExecveEvent</span><span class="o">&gt;</span><span class="p">(),</span><span class="w"> </span><span class="mi">40</span><span class="p">);</span>
+<span class="w">    </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="n">std</span><span class="p">::</span><span class="n">mem</span><span class="p">::</span><span class="n">align_of</span><span class="p">::</span><span class="o">&lt;</span><span class="n">ExecveEvent</span><span class="o">&gt;</span><span class="p">(),</span><span class="w"> </span><span class="mi">4</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// UidGidEvent must be exactly 16 bytes (8+4+4)</span>
+<span class="w">    </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="n">std</span><span class="p">::</span><span class="n">mem</span><span class="p">::</span><span class="n">size_of</span><span class="p">::</span><span class="o">&lt;</span><span class="n">UidGidEvent</span><span class="o">&gt;</span><span class="p">(),</span><span class="w"> </span><span class="mi">16</span><span class="p">);</span>
+<span class="w">    </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="n">std</span><span class="p">::</span><span class="n">mem</span><span class="p">::</span><span class="n">align_of</span><span class="p">::</span><span class="o">&lt;</span><span class="n">UidGidEvent</span><span class="o">&gt;</span><span class="p">(),</span><span class="w"> </span><span class="mi">4</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// FileEvent size depends on feature flags</span>
+<span class="w">    </span><span class="c1">// Without path_extraction: smaller</span>
+<span class="w">    </span><span class="c1">// With path_extraction: 287 bytes</span>
+
+<span class="w">    </span><span class="c1">// Static assertions compile-time</span>
+<span class="w">    </span><span class="cp">#[cfg(feature = </span><span class="s">&quot;path_extraction&quot;</span><span class="cp">)]</span>
+<span class="w">    </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="n">std</span><span class="p">::</span><span class="n">mem</span><span class="p">::</span><span class="n">size_of</span><span class="p">::</span><span class="o">&lt;</span><span class="n">FileEvent</span><span class="o">&gt;</span><span class="p">(),</span><span class="w"> </span><span class="mi">287</span><span class="p">);</span>
+
+<span class="w">    </span><span class="cp">#[cfg(not(feature = </span><span class="s">&quot;path_extraction&quot;</span><span class="cp">))]</span>
+<span class="w">    </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="n">std</span><span class="p">::</span><span class="n">mem</span><span class="p">::</span><span class="n">size_of</span><span class="p">::</span><span class="o">&lt;</span><span class="n">FileEvent</span><span class="o">&gt;</span><span class="p">(),</span><span class="w"> </span><span class="mi">17</span><span class="p">);</span><span class="w"> </span><span class="c1">// minimal version</span>
+<span class="p">};</span>
+</code></pre>
+</div>
+<h3 id="type-and-repr-tests">Type and Repr Tests <a href="#type-and-repr-tests" class="heading-anchor" aria-label="Permalink to Type and Repr Tests">#</a></h3>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// Ensure C compatibility at compile time</span>
+
+<span class="cp">#[test]</span>
+<span class="k">fn</span><span class="w"> </span><span class="nf">test_c_compatibility</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">use</span><span class="w"> </span><span class="n">ghostring_common</span><span class="p">::{</span><span class="n">ExecveEvent</span><span class="p">,</span><span class="w"> </span><span class="n">UidGidEvent</span><span class="p">};</span>
+
+<span class="w">    </span><span class="c1">// These types must have predictable layouts</span>
+
+<span class="w">    </span><span class="c1">// Verify repr(C) is present (compile error if removed)</span>
+<span class="w">    </span><span class="c1">// This test ensures we haven&#39;t accidentally removed repr(C)</span>
+
+<span class="w">    </span><span class="c1">// Check that enum discriminants are predictable</span>
+<span class="w">    </span><span class="k">use</span><span class="w"> </span><span class="n">ghostring_common</span><span class="p">::</span><span class="n">EventType</span><span class="p">;</span>
+<span class="w">    </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="n">EventType</span><span class="p">::</span><span class="n">Execve</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">u8</span><span class="p">,</span><span class="w"> </span><span class="mh">0x01</span><span class="p">);</span>
+<span class="w">    </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="n">EventType</span><span class="p">::</span><span class="n">UidGid</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">u8</span><span class="p">,</span><span class="w"> </span><span class="mh">0x02</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h3 id="constant-validation">Constant Validation <a href="#constant-validation" class="heading-anchor" aria-label="Permalink to Constant Validation">#</a></h3>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="cp">#[test]</span>
+<span class="k">fn</span><span class="w"> </span><span class="nf">test_constants</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">use</span><span class="w"> </span><span class="n">ghostring_common</span><span class="p">::{</span><span class="n">MAX_COMM_LEN</span><span class="p">,</span><span class="w"> </span><span class="n">MAX_PATH_LEN</span><span class="p">};</span>
+
+<span class="w">    </span><span class="c1">// MAX_COMM_LEN must be 16 (includes null terminator)</span>
+<span class="w">    </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="n">MAX_COMM_LEN</span><span class="p">,</span><span class="w"> </span><span class="mi">16</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// MAX_PATH_LEN depends on feature flags</span>
+<span class="w">    </span><span class="cp">#[cfg(feature = </span><span class="s">&quot;path_extraction&quot;</span><span class="cp">)]</span>
+<span class="w">    </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="n">MAX_PATH_LEN</span><span class="p">,</span><span class="w"> </span><span class="mi">256</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// Basic constant sanity checks</span>
+<span class="w">    </span><span class="fm">assert!</span><span class="p">(</span><span class="n">MAX_COMM_LEN</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<span class="w">    </span><span class="fm">assert!</span><span class="p">(</span><span class="n">MAX_PATH_LEN</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">MAX_COMM_LEN</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h2 id="layer-2-integration-tests-ghostring-ebpf">Layer 2: Integration Tests (ghostring-ebpf) <a href="#layer-2-integration-tests-ghostring-ebpf" class="heading-anchor" aria-label="Permalink to Layer 2: Integration Tests (ghostring-ebpf)">#</a></h2>
+<h3 id="ebpf-program-compilation-tests">eBPF Program Compilation Tests <a href="#ebpf-program-compilation-tests" class="heading-anchor" aria-label="Permalink to eBPF Program Compilation Tests">#</a></h3>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// Test that eBPF programs compile to valid bytecode</span>
+
+<span class="k">fn</span><span class="w"> </span><span class="nf">test_ebpf_compilation</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Build the eBPF crate and verify:</span>
+
+<span class="w">    </span><span class="c1">// 1. cargo build --release succeeds</span>
+<span class="w">    </span><span class="c1">// 2. Output binary exists</span>
+<span class="w">    </span><span class="c1">// 3. bpf-linker processed the ELF</span>
+<span class="w">    </span><span class="c1">// 4. __license section is present and correct</span>
+
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="p">::</span><span class="n">process</span><span class="p">::</span><span class="n">Command</span><span class="p">::</span><span class="n">new</span><span class="p">(</span><span class="s">&quot;cargo&quot;</span><span class="p">)</span>
+<span class="w">        </span><span class="p">.</span><span class="n">args</span><span class="p">(</span><span class="o">&amp;</span><span class="p">[</span><span class="s">&quot;build&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;--release&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;--package&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;ghostring-ebpf&quot;</span><span class="p">])</span>
+<span class="w">        </span><span class="p">.</span><span class="n">current_dir</span><span class="p">(</span><span class="s">&quot;/path/to/ghostring&quot;</span><span class="p">)</span>
+<span class="w">        </span><span class="p">.</span><span class="n">output</span><span class="p">()</span>
+<span class="w">        </span><span class="p">.</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to build ghostring-ebpf&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// Check exit code</span>
+<span class="w">    </span><span class="fm">assert!</span><span class="p">(</span><span class="n">output</span><span class="p">.</span><span class="n">status</span><span class="p">.</span><span class="n">success</span><span class="p">(),</span><span class="w"> </span>
+<span class="w">        </span><span class="s">&quot;eBPF build failed: {}&quot;</span><span class="p">,</span><span class="w"> </span>
+<span class="w">        </span><span class="nb">String</span><span class="p">::</span><span class="n">from_utf8_lossy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">output</span><span class="p">.</span><span class="n">stderr</span><span class="p">));</span>
+
+<span class="w">    </span><span class="c1">// Check output binary exists</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">binary_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;target/bpfel-unknown-none/release/ghostring_ebpf&quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="fm">assert!</span><span class="p">(</span>
+<span class="w">        </span><span class="n">std</span><span class="p">::</span><span class="n">path</span><span class="p">::</span><span class="n">Path</span><span class="p">::</span><span class="n">new</span><span class="p">(</span><span class="n">binary_path</span><span class="p">).</span><span class="n">exists</span><span class="p">(),</span>
+<span class="w">        </span><span class="s">&quot;eBPF binary not found at expected path&quot;</span>
+<span class="w">    </span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// Check __license section (via bpftool or readelf)</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">license_output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="p">::</span><span class="n">process</span><span class="p">::</span><span class="n">Command</span><span class="p">::</span><span class="n">new</span><span class="p">(</span><span class="s">&quot;readelf&quot;</span><span class="p">)</span>
+<span class="w">        </span><span class="p">.</span><span class="n">args</span><span class="p">(</span><span class="o">&amp;</span><span class="p">[</span><span class="s">&quot;-S&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">binary_path</span><span class="p">])</span>
+<span class="w">        </span><span class="p">.</span><span class="n">output</span><span class="p">()</span>
+<span class="w">        </span><span class="p">.</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to read ELF sections&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">license_output_str</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">String</span><span class="p">::</span><span class="n">from_utf8_lossy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">output</span><span class="p">.</span><span class="n">status</span><span class="p">);</span>
+<span class="w">    </span><span class="fm">assert!</span><span class="p">(</span>
+<span class="w">        </span><span class="n">license_output_str</span><span class="p">.</span><span class="n">contains</span><span class="p">(</span><span class="s">&quot;GPLv3&quot;</span><span class="p">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>
+<span class="w">        </span><span class="nb">String</span><span class="p">::</span><span class="n">from_utf8_lossy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">license_output</span><span class="p">).</span><span class="n">contains</span><span class="p">(</span><span class="s">&quot;GPLv3&quot;</span><span class="p">),</span>
+<span class="w">        </span><span class="s">&quot;License section not GPLv3&quot;</span>
+<span class="w">    </span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h3 id="verifier-compatibility-checks">Verifier Compatibility Checks <a href="#verifier-compatibility-checks" class="heading-anchor" aria-label="Permalink to Verifier Compatibility Checks">#</a></h3>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// Ensure eBPF programs pass kernel verifier checks</span>
+
+<span class="k">fn</span><span class="w"> </span><span class="nf">test_verifier_compatibility</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Build with checks that verifier would enforce:</span>
+
+<span class="w">    </span><span class="c1">// 1. No infinite loops (structural verification)</span>
+<span class="w">    </span><span class="c1">// 2. Memory access bounds checked</span>
+<span class="w">    </span><span class="c1">// 3. Helper license compliance</span>
+<span class="w">    </span><span class="c1">// 4. Register usage within limits</span>
+<span class="w">    </span><span class="c1">// 5. Stack depth within limits</span>
+
+<span class="w">    </span><span class="c1">// Since we can&#39;t run the kernel verifier in CI,</span>
+<span class="w">    </span><span class="c1">// we check compile-time indicators:</span>
+
+<span class="w">    </span><span class="c1">// - All helper calls go through aya::helpers (verified signatures)</span>
+<span class="w">    </span><span class="c1">// - No `unsafe` blocks except FFI boundaries</span>
+<span class="w">    </span><span class="c1">// - All structs in common are #[repr(C)]</span>
+<span class="w">    </span><span class="c1">// - No std dependencies in ebpf crate</span>
+
+<span class="w">    </span><span class="c1">// CI check: ensure no_std is maintained</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">cargo_toml</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="p">::</span><span class="n">fs</span><span class="p">::</span><span class="n">read_to_string</span><span class="p">(</span>
+<span class="w">        </span><span class="s">&quot;/path/to/ghostring-ebpf/Cargo.toml&quot;</span>
+<span class="w">    </span><span class="p">).</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to read Cargo.toml&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// Verify no std dependency in ebpf crate</span>
+<span class="w">    </span><span class="fm">assert!</span><span class="p">(</span><span class="o">!</span><span class="n">cargo_toml</span><span class="p">.</span><span class="n">contains</span><span class="p">(</span><span class="s">&quot;std&quot;</span><span class="p">),</span><span class="w"> </span>
+<span class="w">        </span><span class="s">&quot;ghostring-ebpf should not depend on std&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h3 id="btfco-re-tests">BTF/CO-RE Tests <a href="#btfco-re-tests" class="heading-anchor" aria-label="Permalink to BTF/CO-RE Tests">#</a></h3>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// Test that BTF metadata is embedded and CO-RE works</span>
+
+<span class="k">fn</span><span class="w"> </span><span class="nf">test_btf_co_rem</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Verify BTF embedding:</span>
+
+<span class="w">    </span><span class="c1">// 1. Read ELF sections for .BTF, .BTF.ext</span>
+<span class="w">    </span><span class="c1">// 2. Verify __license section contains &quot;GPLv3&quot;</span>
+<span class="w">    </span><span class="c1">// 3. Check that struct field access uses Aya helpers</span>
+<span class="w">    </span><span class="c1">// 4. Ensure no hardcoded kernel offsets in eBPF source</span>
+
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">binary_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;/path/to/ghostring-ebpf/target/.../ghostring_ebpf&quot;</span><span class="p">;</span>
+
+<span class="w">    </span><span class="c1">// Check BTF sections exist</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="p">::</span><span class="n">process</span><span class="p">::</span><span class="n">Command</span><span class="p">::</span><span class="n">new</span><span class="p">(</span><span class="s">&quot;readelf&quot;</span><span class="p">)</span>
+<span class="w">        </span><span class="p">.</span><span class="n">args</span><span class="p">(</span><span class="o">&amp;</span><span class="p">[</span><span class="s">&quot;-S&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">binary_path</span><span class="p">])</span>
+<span class="w">        </span><span class="p">.</span><span class="n">output</span><span class="p">()</span>
+<span class="w">        </span><span class="p">.</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to read ELF&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">output_str</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">String</span><span class="p">::</span><span class="n">from_utf8_lossy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">output</span><span class="p">.</span><span class="n">stdout</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// Check for BTF sections</span>
+<span class="w">    </span><span class="fm">assert!</span><span class="p">(</span>
+<span class="w">        </span><span class="n">output_str</span><span class="p">.</span><span class="n">contains</span><span class="p">(</span><span class="s">&quot;.BTF&quot;</span><span class="p">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">output_str</span><span class="p">.</span><span class="n">contains</span><span class="p">(</span><span class="s">&quot;.btf&quot;</span><span class="p">),</span>
+<span class="w">        </span><span class="s">&quot;BTF sections not found in eBPF binary&quot;</span>
+<span class="w">    </span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// Check license section</span>
+<span class="w">    </span><span class="fm">assert!</span><span class="p">(</span>
+<span class="w">        </span><span class="n">output_str</span><span class="p">.</span><span class="n">contains</span><span class="p">(</span><span class="s">&quot;GPLv3&quot;</span><span class="p">),</span>
+<span class="w">        </span><span class="s">&quot;License section not GPLv3&quot;</span>
+<span class="w">    </span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h2 id="layer-3-cicd-testing">Layer 3: CI/CD Testing <a href="#layer-3-cicd-testing" class="heading-anchor" aria-label="Permalink to Layer 3: CI/CD Testing">#</a></h2>
+<h3 id="github-actions-workflow">GitHub Actions Workflow <a href="#github-actions-workflow" class="heading-anchor" aria-label="Permalink to GitHub Actions Workflow">#</a></h3>
+<div class="code-block-container" data-lang="YAML">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">YAML</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># .github/workflows/test.yml</span>
+<span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GhostRing CI</span>
+
+<span class="nt">on</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">push</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">branches</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">main</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">develop</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">pull_request</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">branches</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">main</span><span class="p p-Indicator">]</span>
+
+<span class="nt">jobs</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">test</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+
+<span class="w">        </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v3</span>
+
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Install toolchain</span>
+<span class="w">            </span><span class="l l-Scalar l-Scalar-Plain">run</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">                </span><span class="no">rustup toolchain install nightly --component rust-src</span>
+<span class="w">                </span><span class="no">rustup default nightly</span>
+<span class="w">                </span><span class="no">cargo install bpf-linker</span>
+
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Build ghostring-common</span>
+<span class="w">            </span><span class="l l-Scalar l-Scalar-Plain">run</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">                </span><span class="no">cargo build --package ghostring-common --release</span>
+<span class="w">            </span><span class="c1"># Verify struct sizes</span>
+<span class="w">            </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">                </span><span class="no">cargo test -p ghostring-common -- struct_sizes</span>
+
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Build ghostring-ebpf</span>
+<span class="w">            </span><span class="l l-Scalar l-Scalar-Plain">run</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">                </span><span class="no">cargo build --package ghostring-ebpf --release</span>
+<span class="w">            </span><span class="c1"># Verify BTF and license</span>
+<span class="w">            </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">                </span><span class="no">cargo test -p ghostring-ebpf -- btf_co_re</span>
+
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Build ghostring</span>
+<span class="w">            </span><span class="l l-Scalar l-Scalar-Plain">run</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">                </span><span class="no">cargo build --package ghostring --release</span>
+<span class="w">            </span><span class="c1"># Verify user-daemon compiles</span>
+
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Run all tests</span>
+<span class="w">            </span><span class="l l-Scalar l-Scalar-Plain">run</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">                </span><span class="no">cargo test --workspace -- --skip integration  # Skip slow integration</span>
+
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Check clippy linting</span>
+<span class="w">            </span><span class="l l-Scalar l-Scalar-Plain">run</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">                </span><span class="no">cargo clippy --workspace -- -D warnings</span>
+
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Format check</span>
+<span class="w">            </span><span class="l l-Scalar l-Scalar-Plain">run</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">                </span><span class="no">cargo fmt --check --workspace</span>
+</code></pre>
+</div>
+<h3 id="test-categorization">Test Categorization <a href="#test-categorization" class="heading-anchor" aria-label="Permalink to Test Categorization">#</a></h3>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// Tests categorized by speed and requirement</span>
+
+<span class="c1">// Fast unit tests (run on every PR)</span>
+<span class="cp">#[cfg(test)]</span>
+<span class="k">mod</span><span class="w"> </span><span class="nn">tests</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">use</span><span class="w"> </span><span class="n">ghostring_common</span><span class="p">::{</span><span class="n">ExecveEvent</span><span class="p">,</span><span class="w"> </span><span class="n">UidGidEvent</span><span class="p">};</span>
+
+<span class="w">    </span><span class="cp">#[test]</span>
+<span class="w">    </span><span class="k">fn</span><span class="w"> </span><span class="nf">test_execve_event_size</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="n">std</span><span class="p">::</span><span class="n">mem</span><span class="p">::</span><span class="n">size_of</span><span class="p">::</span><span class="o">&lt;</span><span class="n">ExecveEvent</span><span class="o">&gt;</span><span class="p">(),</span><span class="w"> </span><span class="mi">40</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="cp">#[test]</span>
+<span class="w">    </span><span class="k">fn</span><span class="w"> </span><span class="nf">test_uid_gid_event_size</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="n">std</span><span class="p">::</span><span class="n">mem</span><span class="p">::</span><span class="n">size_of</span><span class="p">::</span><span class="o">&lt;</span><span class="n">UidGidEvent</span><span class="o">&gt;</span><span class="p">(),</span><span class="w"> </span><span class="mi">16</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// Medium integration tests (run on merge to main)</span>
+<span class="cp">#[cfg(test)]</span>
+<span class="k">mod</span><span class="w"> </span><span class="nn">integration</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">use</span><span class="w"> </span><span class="n">ghostring_ebpf</span><span class="p">::</span><span class="n">helpers</span><span class="p">;</span>
+
+<span class="w">    </span><span class="cp">#[test]</span>
+<span class="w">    </span><span class="k">fn</span><span class="w"> </span><span class="nf">test_helper_signatures</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Verify helper functions have expected signatures</span>
+<span class="w">        </span><span class="c1">// These are checked at compile time via usage</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// Slow end-to-end tests (run on release tags only)</span>
+<span class="cp">#[cfg(test)]</span>
+<span class="k">mod</span><span class="w"> </span><span class="nn">e2e</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">use</span><span class="w"> </span><span class="n">std</span><span class="p">::</span><span class="n">process</span><span class="p">::</span><span class="n">Command</span><span class="p">;</span>
+
+<span class="w">    </span><span class="cp">#[test]</span>
+<span class="w">    </span><span class="k">fn</span><span class="w"> </span><span class="nf">test_daemon_runs</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Requires: kernel 5.8+, BTF, sudo</span>
+<span class="w">        </span><span class="c1">// Runs: sudo -E cargo run --release (integration test)</span>
+<span class="w">        </span><span class="c1">// Verifies: daemon starts, attaches eBPF, polls rings</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h3 id="continuous-integration-gates">Continuous Integration Gates <a href="#continuous-integration-gates" class="heading-anchor" aria-label="Permalink to Continuous Integration Gates">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Gate</th>
+<th>Purpose</th>
+<th>Pass Condition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Build</strong></td>
+<td>All crates compile</td>
+<td><code>cargo build --release --workspace</code> exit 0</td>
+</tr>
+<tr>
+<td><strong>Common tests</strong></td>
+<td>Struct layouts, constants</td>
+<td>All <code>cargo test -p ghostring-common</code> pass</td>
+</tr>
+<tr>
+<td><strong>Ebpf compile</strong></td>
+<td>eBPF bytecode builds</td>
+<td><code>cargo build --release -p ghostring-ebpf</code> exit 0</td>
+</tr>
+<tr>
+<td><strong>Clippy</strong></td>
+<td>Code quality</td>
+<td><code>cargo clippy --workspace -- -D warnings</code> exit 0</td>
+</tr>
+<tr>
+<td><strong>Format</strong></td>
+<td>Code style</td>
+<td><code>cargo fmt --check --workspace</code> exit 0</td>
+</tr>
+<tr>
+<td><strong>License check</strong></td>
+<td>GPLv3 compliance</td>
+<td><code>__license</code> section = "GPLv3"</td>
+</tr>
+<tr>
+<td><strong>BTF check</strong></td>
+<td>CO-RE support</td>
+<td><code>.BTF</code> sections present in ELF</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="performance-testing">Performance Testing <a href="#performance-testing" class="heading-anchor" aria-label="Permalink to Performance Testing">#</a></h3>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// Micro-benchmarking test suite</span>
+
+<span class="k">fn</span><span class="w"> </span><span class="nf">benchmark_poll_latency</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Measure round-trip time: eBPF event → ring buffer → user parse</span>
+
+<span class="w">    </span><span class="k">use</span><span class="w"> </span><span class="n">std</span><span class="p">::</span><span class="n">time</span><span class="p">::</span><span class="n">Instant</span><span class="p">;</span>
+
+<span class="w">    </span><span class="c1">// Warm up</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="n">_</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="mi">0</span><span class="o">..</span><span class="mi">100</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Poll ring buffer</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Benchmark</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">iterations</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1000</span><span class="p">;</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">start</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Instant</span><span class="p">::</span><span class="n">now</span><span class="p">();</span>
+
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="n">_</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="mi">0</span><span class="o">..</span><span class="n">iterations</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Poll and process event</span>
+<span class="w">        </span><span class="c1">// poll_ring_buffer()?;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">elapsed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">start</span><span class="p">.</span><span class="n">elapsed</span><span class="p">();</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">avg_us</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">elapsed</span><span class="p">.</span><span class="n">as_micros</span><span class="p">()</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">f64</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">iterations</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">f64</span><span class="p">;</span>
+
+<span class="w">    </span><span class="n">log</span><span class="p">::</span><span class="n">info</span><span class="o">!</span><span class="p">(</span><span class="s">&quot;Average poll latency: {:.2} μs&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">avg_us</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// Alert if latency regresses</span>
+<span class="w">    </span><span class="fm">assert!</span><span class="p">(</span><span class="n">avg_us</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mf">500.0</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Poll latency too high: {:.2} μs&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">avg_us</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h3 id="property-based-testing">Property-Based Testing <a href="#property-based-testing" class="heading-anchor" aria-label="Permalink to Property-Based Testing">#</a></h3>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// Using proptest or similar for invariants</span>
+
+<span class="k">fn</span><span class="w"> </span><span class="nf">test_struct_invariants</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Properties that must always hold:</span>
+
+<span class="w">    </span><span class="c1">// 1. ExecveEvent is 40 bytes (never changes without version bump)</span>
+<span class="w">    </span><span class="c1">// 2. All field offsets are predictable</span>
+<span class="w">    </span><span class="c1">// 3. Enum discriminants are consistent</span>
+<span class="w">    </span><span class="c1">// 4. Constant values are within expected ranges</span>
+
+<span class="w">    </span><span class="c1">// These are checked via const assertions:</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">_</span><span class="p">:</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Compile-time check: sizes known at compile day</span>
+<span class="w">        </span><span class="k">type</span><span class="w"> </span><span class="nc">ExecveSize</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="kt">u8</span><span class="p">;</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">std</span><span class="p">::</span><span class="n">mem</span><span class="p">::</span><span class="n">size_of</span><span class="p">::</span><span class="o">&lt;</span><span class="n">ghostring_common</span><span class="p">::</span><span class="n">ExecveEvent</span><span class="o">&gt;</span><span class="p">()</span><span class="w"> </span><span class="p">}];</span>
+<span class="w">        </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="n">std</span><span class="p">::</span><span class="n">mem</span><span class="p">::</span><span class="n">size_of</span><span class="p">::</span><span class="o">&lt;</span><span class="n">ExecveSize</span><span class="o">&gt;</span><span class="p">(),</span><span class="w"> </span><span class="mi">40</span><span class="p">);</span>
+<span class="w">    </span><span class="p">};</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h3 id="manual-testing-checklist">Manual Testing Checklist <a href="#manual-testing-checklist" class="heading-anchor" aria-label="Permalink to Manual Testing Checklist">#</a></h3>
+<h4 id="prerequisites-for-manual-testing">Prerequisites for Manual Testing <a href="#prerequisites-for-manual-testing" class="heading-anchor" aria-label="Permalink to Prerequisites for Manual Testing">#</a></h4>
+<div class="code-block-container" data-lang="CODE">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">CODE</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code>[ ] Linux kernel 5.8+ with BTF enabled
+[ ] Rust Nightly with rust-src component
+[ ] bpf-linker cargo utility installed
+[ ] sudo privileges for eBPF loading
+[ ] GhostRing built (cargo build --release --workspace)
+</code></pre>
+</div>
+<h4 id="step-by-step-manual-test">Step-by-Step Manual Test <a href="#step-by-step-manual-test" class="heading-anchor" aria-label="Permalink to Step-by-Step Manual Test">#</a></h4>
+<div class="code-block-container" data-lang="CODE">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">CODE</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code>1. Load module (implicit via cargo run):
+   sudo -E cargo run --release
+
+   Expected output: Daemon starts, attaches eBPF programs
+   (No errors about license, verifier, attachment)
+
+2. Trigger a syscall:
+   Run any command: ls, cd, bash, etc.
+
+   Expected: Daemon prints event output like:
+   &quot;execve: pid=1234 uid=0 comm=ls&quot;
+
+3. Verify event fields:
+   - pid matches the command&#39;s PID
+   - uid matches the user running the command
+   - comm is the command name (may be truncated to 15 chars)
+
+4. Test multiple events:
+   Run multiple commands quickly
+
+   Expected: Multiple event lines printed
+   No crashes or &quot;buffer overflow&quot; errors
+
+5. Check help options:
+   cargo run --release -- --help
+   cargo run --release -v
+
+   Expected: CLI accepts flags, shows help
+</code></pre>
+</div>
+<h3 id="debugging-test-failures">Debugging Test Failures <a href="#debugging-test-failures" class="heading-anchor" aria-label="Permalink to Debugging Test Failures">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Failure Mode</th>
+<th>Likely Cause</th>
+<th>Debug Steps</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>"struct size mismatch"</td>
+<td>Field added/removed without updating</td>
+<td>Check <code>ghostring-common-structs.md</code>; bump version</td>
+</tr>
+<tr>
+<td>"license check failed"</td>
+<td><code>__license</code> section wrong</td>
+<td>Verify <code>build.rs</code> has <code>println!("cargo:rustc-link-arg-bpf=--license=GPLv3")</code></td>
+</tr>
+<tr>
+<td>"BTF section missing"</td>
+<td>Kernel too old / BTF not enabled</td>
+<td>Check <code>/sys/kernel/btf/vmlinux</code> exists; kernel &gt;= 5.8</td>
+</tr>
+<tr>
+<td>"no events appearing"</td>
+<td>eBPF not attached</td>
+<td>Check <code>dmesg</code> for verifier errors; check tracepoint availability</td>
+</tr>
+<tr>
+<td>"buffer overflow"</td>
+<td>Too many events, small buffer</td>
+<td>Increase <code>max_entries</code> in PerfEventArray map</td>
+</tr>
+<tr>
+<td>"permission denied"</td>
+<td>Missing caps</td>
+<td>Run with <code>sudo -E</code>; check <code>CAP_SYS_ADMIN</code></td>
+</tr>
+<tr>
+<td>"compile error on std"</td>
+<td>ebpf crate uses std</td>
+<td>Remove <code>std</code> dependency; use <code>no_std</code> pattern</td>
+</tr>
+<tr>
+<td>"clippy warnings"</td>
+<td>Code quality issues</td>
+<td>Fix clippy errors; run <code>cargo clippy -- -D warnings</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="release-gates-checklist">Release Gates Checklist <a href="#release-gates-checklist" class="heading-anchor" aria-label="Permalink to Release Gates Checklist">#</a></h3>
+<div class="code-block-container" data-lang="CODE">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">CODE</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code>[ ] cargo build --release --workspace - all crates build
+[ ] cargo test --workspace - unit tests pass
+[ ] cargo clippy --workspace -- -D warnings - no warnings
+[ ] cargo fmt --check --workspace - format OK
+[ ] All struct size invariants verified (40B Execve, 16B UidGid, etc.)
+[ ] __license section = &quot;GPLv3&quot; in all eBPF builds
+[ ] .BTF sections present in eBPF ELF binaries
+[ ] GitHub Actions workflow passes on push/PR
+[ ] Manual test: sudo -E cargo run --release produces events
+[ ] No breaking changes without version bump
+[ ] Documentation updated (docs/ files in sync)
+</code></pre>
+</div>
+<h2 id="related-documentation">Related Documentation <a href="#related-documentation" class="heading-anchor" aria-label="Permalink to Related Documentation">#</a></h2>
+<ul>
+<li><a href="build-system-workspace.html">Build System &amp; Workspace</a> — Multi-crate Cargo test commands, CI/CD workflows, and linter automation.</li>
+<li><a href="ghostring-common-structs.html">ghostring-common Struct Design</a> — Struct layout invariants, size checks, and alignment constraints.</li>
+<li><a href="perf-buffer-internals.html">Perf Buffer Internals</a> — Benchmark targets, throughput thresholds, and loss-rate testing.</li>
+<li><a href="ghostring-user-daemon.html">ghostring User Daemon</a> — CLI integration test harness and Tokio runtime testing.</li>
+<li><a href="ebpf-internals.html">eBPF Internals &amp; Bytecode</a> — Verifier rules, bytecode instruction count testing, and mock tests.</li>
+<li><a href="development-environment.html">Development Environment</a> — Toolchain verification and test execution commands.</li>
+<li><a href="troubleshooting-guide.html">Troubleshooting Guide</a> — Diagnostic steps for test assertions, verifier rejections, and runtime panics.</li>
+</ul>
+        </article>
+
+        <div class="doc-pagination">
+
+      <a href="build-system-workspace.html" class="pagination-card prev-card">
+        <span class="pagination-label">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          Previous
+        </span>
+        <span class="pagination-title">GhostRing Build System and Workspace Deep Dive</span>
+      </a>
+
+      <a href="troubleshooting-guide.html" class="pagination-card next-card">
+        <span class="pagination-label">
+          Next
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </span>
+        <span class="pagination-title">Troubleshooting Guide</span>
+      </a>
+</div>
+
+        <footer class="docs-footer">
+          <div class="footer-left">
+            <span>GhostRing eBPF Security Subsystem • Licensed under GPLv3</span>
+          </div>
+          <div class="footer-right">
+            <a href="#top" class="back-to-top-btn">Back to top ↑</a>
+          </div>
+        </footer>
+      </div>
+    </main>
+
+    <!-- Right "On This Page" Sidebar -->
+    <aside class="docs-toc-aside">
+      <div class="toc-sticky-container">
+        <div class="toc-heading">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+          <span>On this page</span>
+        </div>
+        <ul class="toc-list">
+
+      <li class="toc-item toc-item-h2">
+        <a href="#testing-philosophy" class="toc-link" data-heading="testing-philosophy">Testing Philosophy</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#layer-1-unit-tests-ghostring-common" class="toc-link" data-heading="layer-1-unit-tests-ghostring-common">Layer 1: Unit Tests ( ghostring-common)</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#struct-layout-tests" class="toc-link" data-heading="struct-layout-tests">Struct Layout Tests</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#type-and-repr-tests" class="toc-link" data-heading="type-and-repr-tests">Type and Repr Tests</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#constant-validation" class="toc-link" data-heading="constant-validation">Constant Validation</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#layer-2-integration-tests-ghostring-ebpf" class="toc-link" data-heading="layer-2-integration-tests-ghostring-ebpf">Layer 2: Integration Tests (ghostring-ebpf)</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#ebpf-program-compilation-tests" class="toc-link" data-heading="ebpf-program-compilation-tests">eBPF Program Compilation Tests</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#verifier-compatibility-checks" class="toc-link" data-heading="verifier-compatibility-checks">Verifier Compatibility Checks</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#btfco-re-tests" class="toc-link" data-heading="btfco-re-tests">BTF/CO-RE Tests</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#layer-3-cicd-testing" class="toc-link" data-heading="layer-3-cicd-testing">Layer 3: CI/CD Testing</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#github-actions-workflow" class="toc-link" data-heading="github-actions-workflow">GitHub Actions Workflow</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#test-categorization" class="toc-link" data-heading="test-categorization">Test Categorization</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#continuous-integration-gates" class="toc-link" data-heading="continuous-integration-gates">Continuous Integration Gates</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#performance-testing" class="toc-link" data-heading="performance-testing">Performance Testing</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#property-based-testing" class="toc-link" data-heading="property-based-testing">Property-Based Testing</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#manual-testing-checklist" class="toc-link" data-heading="manual-testing-checklist">Manual Testing Checklist</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#debugging-test-failures" class="toc-link" data-heading="debugging-test-failures">Debugging Test Failures</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#release-gates-checklist" class="toc-link" data-heading="release-gates-checklist">Release Gates Checklist</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#related-documentation" class="toc-link" data-heading="related-documentation">Related Documentation</a>
+      </li>
+</ul>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Interactive Search Modal -->
+  <div id="search-modal" class="search-modal" aria-hidden="true" role="dialog">
+    <div class="search-modal-backdrop"></div>
+    <div class="search-modal-box">
+      <div class="search-input-wrapper">
+        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="search-input" class="search-input" placeholder="Search documentation, topics, APIs, CLI flags..." autocomplete="off">
+        <button id="search-clear-btn" class="search-clear-btn" aria-label="Clear query">&times;</button>
+      </div>
+      <div id="search-results" class="search-results">
+        <div class="search-initial-state">Type a keyword to search docs...</div>
+      </div>
+      <div class="search-modal-footer">
+        <span class="search-hint"><kbd>↑</kbd><kbd>↓</kbd> to navigate</span>
+        <span class="search-hint"><kbd>Enter</kbd> to select</span>
+        <span class="search-hint"><kbd>Esc</kbd> to close</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/search-index.js"></script>
+  <script src="assets/docs.js"></script>
+</body>
+</html>

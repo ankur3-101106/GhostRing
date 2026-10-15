@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BTF and CO-RE Deep Dive for GhostRing | GhostRing Documentation</title>
+  <meta name="description" content="BPF Type Format (BTF) structure, Compile Once, Run Everywhere (CO-RE) field relocations, and kernel portability. - GhostRing Ring 0 eBPF Telemetry Engine">
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+  <link rel="stylesheet" href="assets/docs.css">
+  <script>
+    (function() {
+      const stored = localStorage.getItem('ghostring_docs_theme');
+      if (stored) {
+        document.documentElement.setAttribute('data-theme', stored);
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+</head>
+<body class="docs-body">
+
+  <!-- Top Navigation Bar -->
+  <header class="top-nav">
+    <div class="top-nav-inner">
+      <div class="nav-left">
+        <button id="mobile-sidebar-toggle" class="nav-icon-btn mobile-only" aria-label="Open Sidebar Menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+        <a href="index.html" class="brand-link">
+          <img src="assets/logo.svg" alt="GhostRing Logo" class="brand-logo" width="32" height="32">
+          <div class="brand-info">
+            <span class="brand-name">GhostRing</span>
+            <span class="brand-tag">Ring 0 Telemetry</span>
+          </div>
+        </a>
+        <span class="version-pill">v0.1.0</span>
+      </div>
+
+      <div class="nav-center">
+        <button id="search-trigger-btn" class="search-trigger" type="button" aria-label="Search documentation">
+          <svg class="search-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <span class="search-placeholder">Search documentation...</span>
+          <span class="search-shortcut"><kbd>Ctrl</kbd><kbd>K</kbd></span>
+        </button>
+      </div>
+
+      <div class="nav-right">
+        <button id="theme-toggle" class="nav-icon-btn" type="button" aria-label="Toggle light/dark theme" title="Toggle theme">
+          <svg class="theme-icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+          <svg class="theme-icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        </button>
+        <a href="https://github.com/ankur/ghostring" target="_blank" rel="noopener noreferrer" class="nav-icon-btn github-btn" aria-label="GitHub Repository" title="GitHub">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"></path></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Documentation Container -->
+  <div class="docs-layout">
+    
+    <!-- Left Navigation Sidebar -->
+    <aside id="docs-sidebar" class="docs-sidebar">
+      <div class="sidebar-scroller">
+        <nav class="sidebar-nav" aria-label="Main Navigation">
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">Documentation Suite</div>
+      <ul class="sidebar-links">
+        <li>
+          <a href="index.html" class="sidebar-link">
+            <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            <span>Documentation Hub</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">01</span>
+        <span class="group-title">Foundational Architecture & Environment</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="architecture-overview.html" class="sidebar-link" title="Architecture Overview">
+            <span class="link-bullet"></span>
+            <span class="link-text">Architecture Overview</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="development-environment.html" class="sidebar-link" title="Development Environment">
+            <span class="link-bullet"></span>
+            <span class="link-text">Development Environment</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ebpf-fundamentals.html" class="sidebar-link" title="eBPF Fundamentals">
+            <span class="link-bullet"></span>
+            <span class="link-text">eBPF Fundamentals</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="kernel-instrumentation.html" class="sidebar-link" title="Kernel Instrumentation">
+            <span class="link-bullet"></span>
+            <span class="link-text">Kernel Instrumentation</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">02</span>
+        <span class="group-title">Kernel Space & eBPF Engineering</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="ebpf-internals.html" class="sidebar-link" title="eBPF Internals &amp; Bytecode">
+            <span class="link-bullet"></span>
+            <span class="link-text">eBPF Internals &amp; Bytecode</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="aya-framework.html" class="sidebar-link" title="Aya Framework">
+            <span class="link-bullet"></span>
+            <span class="link-text">Aya Framework</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="btf-co-re-deep-dive.html" class="sidebar-link active" title="BTF &amp; CO-RE Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">BTF &amp; CO-RE Deep Dive</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ghostring-common-structs.html" class="sidebar-link" title="ghostring-common Structs">
+            <span class="link-bullet"></span>
+            <span class="link-text">ghostring-common Structs</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">03</span>
+        <span class="group-title">Telemetry & User Space Pipeline</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="event-transport.html" class="sidebar-link" title="Event Transport">
+            <span class="link-bullet"></span>
+            <span class="link-text">Event Transport</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="perf-buffer-internals.html" class="sidebar-link" title="Perf Buffer Internals">
+            <span class="link-bullet"></span>
+            <span class="link-text">Perf Buffer Internals</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ghostring-user-daemon.html" class="sidebar-link" title="ghostring User Daemon">
+            <span class="link-bullet"></span>
+            <span class="link-text">ghostring User Daemon</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">04</span>
+        <span class="group-title">Security, Compliance & Governance</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="security-requirements.html" class="sidebar-link" title="Security Requirements">
+            <span class="link-bullet"></span>
+            <span class="link-text">Security Requirements</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="security-model-deep-dive.html" class="sidebar-link" title="Security Model Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">Security Model Deep Dive</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="license-compliance-deep.html" class="sidebar-link" title="License Compliance Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">License Compliance Deep Dive</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">05</span>
+        <span class="group-title">Quality Assurance, Operations & Roadmap</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="build-system-workspace.html" class="sidebar-link" title="Build System &amp; Workspace">
+            <span class="link-bullet"></span>
+            <span class="link-text">Build System &amp; Workspace</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="testing-strategy.html" class="sidebar-link" title="Testing Strategy">
+            <span class="link-bullet"></span>
+            <span class="link-text">Testing Strategy</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="troubleshooting-guide.html" class="sidebar-link" title="Troubleshooting Guide">
+            <span class="link-bullet"></span>
+            <span class="link-text">Troubleshooting Guide</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="roadmap-features-deep.html" class="sidebar-link" title="Roadmap Features Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">Roadmap Features Deep Dive</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+</nav>
+      </div>
+    </aside>
+    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+    <!-- Center Content Article -->
+    <main class="docs-main">
+      <div class="content-wrapper">
+        
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <a href="index.html" class="crumb-link">Docs</a>
+      <span class="crumb-sep">/</span>
+      <span class="crumb-cat">Kernel Space &amp; eBPF Engineering</span>
+      <span class="crumb-sep">/</span>
+      <span class="crumb-active">BTF and CO-RE Deep Dive for GhostRing</span>
+    </nav>
+    
+        
+        <article class="markdown-body">
+          <h1 id="btf-and-co-re-deep-dive-for-ghostring">BTF and CO-RE Deep Dive for GhostRing <a href="#btf-and-co-re-deep-dive-for-ghostring" class="heading-anchor" aria-label="Permalink to BTF and CO-RE Deep Dive for GhostRing">#</a></h1>
+<h2 id="btf-bpf-type-format-fundamentals">BTF (BPF Type Format) Fundamentals <a href="#btf-bpf-type-format-fundamentals" class="heading-anchor" aria-label="Permalink to BTF (BPF Type Format) Fundamentals">#</a></h2>
+<h3 id="what-is-btf">What is BTF? <a href="#what-is-btf" class="heading-anchor" aria-label="Permalink to What is BTF?">#</a></h3>
+<p><strong>BPF Type Format (BTF)</strong> is debug metadata embedded in ELF binaries that provides type information at runtime. For eBPF, BTF enables:</p>
+<ul>
+<li><strong>CO-RE (Compile Once, Run Everywhere)</strong>: eBPF programs don't need hardcoded kernel struct offsets</li>
+<li><strong>Type-safe field access</strong>: By name at runtime via BTF, not by offset at compile time</li>
+<li><strong>Kernel version independence</strong>: Same BPF bytecode works across kernel versions</li>
+</ul>
+<h3 id="btf-embedding-in-elf">BTF Embedding in ELF <a href="#btf-embedding-in-elf" class="heading-anchor" aria-label="Permalink to BTF Embedding in ELF">#</a></h3>
+<p>When <code>cargo build --release</code> is run with BTF support:</p>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// ghostring-ebpf/build.rs - BTF embedding</span>
+<span class="k">if</span><span class="w"> </span><span class="n">std</span><span class="p">::</span><span class="n">path</span><span class="p">::</span><span class="n">Path</span><span class="p">::</span><span class="n">new</span><span class="p">(</span><span class="s">&quot;/sys/kernel/btf/vmlinux&quot;</span><span class="p">).</span><span class="n">exists</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Automatically embed BTF via LLVM flags</span>
+<span class="w">    </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;cargo:rustc-cfg=with_btf&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;cargo:rustc-link-arg-bpf=--btf&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<p><strong>Embedded sections</strong>: <code>.BTF</code>, <code>.BTF.ext</code>, <code>.rodata1</code> contain compressed type information.</p>
+<h3 id="btf-structure">BTF Structure <a href="#btf-structure" class="heading-anchor" aria-label="Permalink to BTF Structure">#</a></h3>
+<div class="code-block-container" data-lang="CODE">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">CODE</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code>┌───────────────────────────────────────────────────────┐
+│ Section: .BTF                                         │
+│ Type: Fixed-size record array                         │
+│                                                       │
+│ Key types for GhostRing:                              │
+│   - struct file                                       │
+│   - struct inode                                      │
+│   - struct pt_regs (register context)                 │
+│   - struct task_struct (process info)                 │
+│   - struct fs_struct                                  │
+│   - struct mm_struct                                  │
+│   - compat fields for 32/64-bit portability          │
+└───────────────────────────────────────────────────────┘
+</code></pre>
+</div>
+<h3 id="btf-kernel-requirements">BTF Kernel Requirements <a href="#btf-kernel-requirements" class="heading-anchor" aria-label="Permalink to BTF Kernel Requirements">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Requirement</th>
+<th>Minimum</th>
+<th>Recommended</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Kernel version</strong></td>
+<td>4.15+</td>
+<td>5.8+</td>
+</tr>
+<tr>
+<td><strong>CONFIG_BTF</strong></td>
+<td>y</td>
+<td>y</td>
+</tr>
+<tr>
+<td><strong>CONFIG_BTF_DEVICE</strong></td>
+<td>n</td>
+<td>y (for device metadata)</td>
+</tr>
+<tr>
+<td><strong>CONFIG_BTF_USERSPACE</strong></td>
+<td>n</td>
+<td>y (for user-type access)</td>
+</tr>
+<tr>
+<td><strong>/sys/kernel/btf/vmlinux</strong></td>
+<td>Must exist</td>
+<td>Must be accessible</td>
+</tr>
+<tr>
+<td><strong>CONFIG_BPF</strong></td>
+<td>y</td>
+<td>y</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="verifying-btf-availability">Verifying BTF Availability <a href="#verifying-btf-availability" class="heading-anchor" aria-label="Permalink to Verifying BTF Availability">#</a></h3>
+<div class="code-block-container" data-lang="BASH">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">BASH</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># Check if BTF is available on running kernel</span>
+ls<span class="w"> </span>-la<span class="w"> </span>/sys/kernel/btf/vmlinux
+
+<span class="c1"># If file exists, read BTF info</span>
+cat<span class="w"> </span>/sys/kernel/btf/vmlinux<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-c<span class="w"> </span><span class="m">100</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>xxd
+
+<span class="c1"># Check BTF type count</span>
+bpftool<span class="w"> </span>btf<span class="w"> </span>dump<span class="w"> </span>verbose<span class="w"> </span>/proc/self/exe<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-20
+
+<span class="c1"># List all BTF types</span>
+bpftool<span class="w"> </span>btf<span class="w"> </span>dump<span class="w"> </span>verbose<span class="w"> </span>id<span class="w"> </span>/proc/self/pid<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s1">&#39;name kind&#39;</span>
+</code></pre>
+</div>
+<h3 id="btf-and-co-re-in-practice">BTF and CO-RE in Practice <a href="#btf-and-co-re-in-practice" class="heading-anchor" aria-label="Permalink to BTF and CO-RE in Practice">#</a></h3>
+<h4 id="without-btf-traditional">Without BTF (Traditional) <a href="#without-btf-traditional" class="heading-anchor" aria-label="Permalink to Without BTF (Traditional)">#</a></h4>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// Must know kernel struct layout at compile time</span>
+<span class="cp">#[inline(always)]</span>
+<span class="k">pub</span><span class="w"> </span><span class="k">fn</span><span class="w"> </span><span class="nf">get_pid_from_context</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span><span class="w"> </span><span class="o">*</span><span class="k">const</span><span class="w"> </span><span class="n">c_void</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="kt">u32</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Hardcoded offset - breaks on kernel update</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">ptr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ctx</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="o">*</span><span class="k">const</span><span class="w"> </span><span class="n">user_regs_struct</span><span class="p">;</span>
+<span class="w">    </span><span class="p">(</span><span class="o">*</span><span class="n">ptr</span><span class="p">).</span><span class="n">pid</span><span class="w">  </span><span class="c1">// offset known only for specific kernel version</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h4 id="with-btf-ghostring-approach">With BTF (GhostRing approach) <a href="#with-btf-ghostring-approach" class="heading-anchor" aria-label="Permalink to With BTF (GhostRing approach)">#</a></h4>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// BTF-enabled: access by type name at runtime</span>
+<span class="k">use</span><span class="w"> </span><span class="n">aya</span><span class="p">::</span><span class="n">bindings</span><span class="p">::</span><span class="n">btf_type</span><span class="p">;</span>
+<span class="k">use</span><span class="w"> </span><span class="n">aya</span><span class="p">::</span><span class="n">Btf</span><span class="p">;</span>
+
+<span class="k">pub</span><span class="w"> </span><span class="k">fn</span><span class="w"> </span><span class="nf">get_pid_from_context</span><span class="p">(</span><span class="n">btf</span><span class="p">:</span><span class="w"> </span><span class="kp">&amp;</span><span class="nc">Btf</span><span class="p">,</span><span class="w"> </span><span class="n">ctx</span><span class="p">:</span><span class="w"> </span><span class="o">*</span><span class="k">const</span><span class="w"> </span><span class="n">c_void</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="kt">u32</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Look up type by name in BTF metadata</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nb">Some</span><span class="p">(</span><span class="n">type_id</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">btf</span><span class="p">.</span><span class="n">type_id</span><span class="p">(</span><span class="s">&quot;struct pt_regs&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Access field &#39;pid&#39; by name at runtime</span>
+<span class="w">        </span><span class="c1">// Aya handles the offset resolution via BTF</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">pid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">aya</span><span class="p">::</span><span class="n">helpers</span><span class="p">::</span><span class="n">bpf_get_current_pid_tgid</span><span class="p">()</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">u32</span><span class="p">;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">pid</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="mi">0</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h3 id="ayas-btf-support">Aya's BTF Support <a href="#ayas-btf-support" class="heading-anchor" aria-label="Permalink to Aya's BTF Support">#</a></h3>
+<p>Aya automatically:</p>
+<ol>
+<li><strong>Embeds BTF</strong> from the compiled ELF into the loaded program</li>
+<li><strong>Provides type lookups</strong> via <code>aya::Btf</code> API</li>
+<li><strong>Resolves struct offsets</strong> at load time using kernel BTF</li>
+<li><strong>Enables field access</strong> by name in user-space helper functions</li>
+</ol>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// In ghostring-ebpf program with Aya BTF support</span>
+<span class="k">use</span><span class="w"> </span><span class="n">aya</span><span class="p">::</span><span class="n">Btf</span><span class="p">;</span>
+
+<span class="cp">#[aya::main]</span>
+<span class="k">pub</span><span class="w"> </span><span class="k">fn</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="n">bpf</span><span class="p">:</span><span class="w"> </span><span class="nc">aya</span><span class="p">::</span><span class="n">EBPF</span><span class="p">,</span><span class="w"> </span><span class="n">_ctx</span><span class="p">:</span><span class="w"> </span><span class="nc">aya</span><span class="p">::</span><span class="n">ctx</span><span class="p">::</span><span class="n">MainContext</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nb">Result</span><span class="o">&lt;</span><span class="p">(),</span><span class="w"> </span><span class="n">aya</span><span class="p">::</span><span class="n">Error</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Load BTF from attached program&#39;s ELF</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">btf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bpf</span><span class="p">.</span><span class="n">btf</span><span class="p">();</span>
+
+<span class="w">    </span><span class="c1">// Look up structs by name</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">pid_type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">btf</span><span class="p">.</span><span class="n">type_id</span><span class="p">(</span><span class="s">&quot;struct pt_regs&quot;</span><span class="p">)</span><span class="o">?</span><span class="p">;</span>
+
+<span class="w">    </span><span class="c1">// Access fields by name (via helper functions)</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">pid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">aya</span><span class="p">::</span><span class="n">helpers</span><span class="p">::</span><span class="n">bpf_get_current_pid_tgid</span><span class="p">()</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">u32</span><span class="p">;</span>
+
+<span class="w">    </span><span class="c1">// Push event with typed data</span>
+<span class="w">    </span><span class="c1">// ... </span>
+
+<span class="w">    </span><span class="nb">Ok</span><span class="p">(())</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h2 id="co-re-compile-once-run-everywhere-mechanics">CO-RE (Compile Once, Run Everywhere) Mechanics <a href="#co-re-compile-once-run-everywhere-mechanics" class="heading-anchor" aria-label="Permalink to CO-RE (Compile Once, Run Everywhere) Mechanics">#</a></h2>
+<h3 id="co-re-philosophy">CO-RE Philosophy <a href="#co-re-philosophy" class="heading-anchor" aria-label="Permalink to CO-RE Philosophy">#</a></h3>
+<blockquote>
+<p><strong>"Compile once with BTF, run on any compatible kernel without recompilation."</strong></p>
+</blockquote>
+<h3 id="how-co-re-works">How CO-RE Works <a href="#how-co-re-works" class="heading-anchor" aria-label="Permalink to How CO-RE Works">#</a></h3>
+<ol>
+<li><strong>Compile time</strong>: eBPF bytecode compiled with BTF metadata embedded</li>
+<li><strong>Link time</strong>: <code>bpf-linker</code> processes ELF, adds BTF sections</li>
+<li><strong>Load time</strong>: Kernel provides <code>/sys/kernel/btf/vmlinux</code> BTF metadata</li>
+<li><strong>Runtime</strong>: eBPF program uses Aya helpers to access struct fields by name</li>
+<li><strong>Compatibility</strong>: Same bytecode runs on any kernel with matching BTF</li>
+</ol>
+<h3 id="co-re-enabled-features-in-ghostring">CO-RE Enabled Features in GhostRing <a href="#co-re-enabled-features-in-ghostring" class="heading-anchor" aria-label="Permalink to CO-RE Enabled Features in GhostRing">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>CO-RE Status</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sys_enter_execve</code> probe</td>
+<td>✅ CO-RE</td>
+<td>Aya tracepoint attachment, BTF-resolved struct offsets</td>
+</tr>
+<tr>
+<td><code>pid</code> extraction</td>
+<td>✅ CO-RE</td>
+<td><code>bpf_get_current_pid_tgid()</code> helper, BTF-verified</td>
+</tr>
+<tr>
+<td><code>uid</code> extraction</td>
+<td>✅ CO-RE</td>
+<td><code>bpf_get_current_uid_gid()</code> helper</td>
+</tr>
+<tr>
+<td><code>comm</code> (command name)</td>
+<td>✅ CO-RE</td>
+<td><code>bpf_get_current_comm()</code> with 16-byte buffer</td>
+</tr>
+<tr>
+<td><code>full path extraction</code></td>
+<td>⚠️ Partial</td>
+<td><code>bpf_probe_read_user_str</code> requires BTF + specific kernel</td>
+</tr>
+<tr>
+<td><code>tcp_connect kprobes</code></td>
+<td>✅ CO-RE</td>
+<td>kprobe attachment BTF-resolved</td>
+</tr>
+<tr>
+<td><code>sys_enter_openat</code></td>
+<td>✅ CO-RE</td>
+<td>Tracepoint with BTF struct resolution</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="co-re-requirements-by-feature">CO-RE Requirements by Feature <a href="#co-re-requirements-by-feature" class="heading-anchor" aria-label="Permalink to CO-RE Requirements by Feature">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>BTF Required</th>
+<th>Kernel Min</th>
+<th>Aya Support</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tracepoint attachment</td>
+<td>✅</td>
+<td>4.15+</td>
+<td>✅ Full</td>
+</tr>
+<tr>
+<td>kprobe attachment</td>
+<td>✅</td>
+<td>4.1+</td>
+<td>✅ Full</td>
+</tr>
+<tr>
+<td><code>bpf_get_current_pid_tgid</code></td>
+<td>✅</td>
+<td>3.10+</td>
+<td>✅ Full</td>
+</tr>
+<tr>
+<td><code>bpf_get_current_uid_gid</code></td>
+<td>✅</td>
+<td>3.10+</td>
+<td>✅ Full</td>
+</tr>
+<tr>
+<td><code>bpf_get_current_comm</code></td>
+<td>✅</td>
+<td>3.10+</td>
+<td>✅ Full</td>
+</tr>
+<tr>
+<td><code>bpf_probe_read_user_str</code></td>
+<td>✅⚠️</td>
+<td>5.8+</td>
+<td>⚠️ Conditional</td>
+</tr>
+<tr>
+<td><code>bpf_probe_read_user</code></td>
+<td>✅</td>
+<td>4.1+</td>
+<td>✅ Full</td>
+</tr>
+<tr>
+<td><code>PerfEventArray</code> maps</td>
+<td>✅</td>
+<td>4.1+</td>
+<td>✅ Full</td>
+</tr>
+<tr>
+<td>Hash maps</td>
+<td>✅</td>
+<td>5.7+</td>
+<td>✅ Full</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="co-re-compatible-ebpf-program-skeleton">CO-RE Compatible eBPF Program Skeleton <a href="#co-re-compatible-ebpf-program-skeleton" class="heading-anchor" aria-label="Permalink to CO-RE Compatible eBPF Program Skeleton">#</a></h3>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// ghostring-ebpf/src/lib.rs - CO-RE ready template</span>
+<span class="k">use</span><span class="w"> </span><span class="n">aya</span><span class="p">::{</span>
+<span class="w">    </span><span class="n">Ebpf</span><span class="p">,</span><span class="w"> </span><span class="n">Btf</span><span class="p">,</span><span class="w"> </span><span class="n">programs</span><span class="p">::{</span><span class="n">TracepointProgram</span><span class="p">,</span><span class="w"> </span><span class="n">KprobeProgram</span><span class="p">},</span>
+<span class="w">    </span><span class="n">helpers</span><span class="p">,</span>
+<span class="w">    </span><span class="n">maps</span><span class="p">::{</span><span class="n">PerfEventArray</span><span class="p">,</span><span class="w"> </span><span class="n">MapType</span><span class="p">},</span>
+<span class="w">    </span><span class="n">bindings</span><span class="p">::{</span><span class="bp">self</span><span class="p">,</span><span class="w"> </span><span class="n">perf_event_output</span><span class="p">},</span>
+<span class="p">};</span>
+
+<span class="cp">#[ay a::main]</span>
+<span class="k">pub</span><span class="w"> </span><span class="k">fn</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="n">ebpf</span><span class="p">:</span><span class="w"> </span><span class="nc">Ebpf</span><span class="p">,</span><span class="w"> </span><span class="n">ctx</span><span class="p">:</span><span class="w"> </span><span class="nc">aya</span><span class="p">::</span><span class="n">ctx</span><span class="p">::</span><span class="n">MainContext</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nb">Result</span><span class="o">&lt;</span><span class="p">(),</span><span class="w"> </span><span class="n">aya</span><span class="p">::</span><span class="n">Error</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Initialize BTF from loaded program</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">btf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ebpf</span><span class="p">.</span><span class="n">btf</span><span class="p">();</span>
+
+<span class="w">    </span><span class="c1">// Attach to tracepoint with BTF-resolved offsets</span>
+<span class="w">    </span><span class="cp">#[tracepoint(xdp, </span><span class="s">&quot;sys_enter_execve&quot;</span><span class="cp">)]</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="k">fn</span><span class="w"> </span><span class="nf">sys_enter_execve</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span><span class="w"> </span><span class="nc">bindings</span><span class="p">::</span><span class="n">tracepoint_sys_enter_execve_context</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Use Aya helpers (BTF-verified at load time)</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">pid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">helpers</span><span class="p">::</span><span class="n">bpf_get_current_pid_tgid</span><span class="p">()</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">u32</span><span class="p">;</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">uid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">helpers</span><span class="p">::</span><span class="n">bpf_get_current_uid_gid</span><span class="p">()</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">u32</span><span class="p">;</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">timestamp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">helpers</span><span class="p">::</span><span class="n">bpf_ktime_get_ns</span><span class="p">();</span>
+
+<span class="w">        </span><span class="c1">// Copy command name (BTF ensures 16-byte buffer is sufficient)</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">command</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="kt">u8</span><span class="p">;</span><span class="w"> </span><span class="mi">16</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="mi">16</span><span class="p">];</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">comm_len</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">helpers</span><span class="p">::</span><span class="n">bpf_get_current_comm</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span><span class="w"> </span><span class="n">command</span><span class="p">,</span><span class="w"> </span><span class="mi">16</span><span class="p">);</span>
+
+<span class="w">        </span><span class="c1">// Build event struct (#[repr(C)] in common)</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">event</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ghostring_common</span><span class="p">::</span><span class="n">ExecveEvent</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">pid</span><span class="p">,</span>
+<span class="w">            </span><span class="n">ppid</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w">  </span><span class="c1">// Could fill from context if needed</span>
+<span class="w">            </span><span class="n">uid</span><span class="p">,</span>
+<span class="w">            </span><span class="n">gid</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">            </span><span class="n">flags</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">            </span><span class="n">timestamp</span><span class="p">,</span>
+<span class="w">            </span><span class="n">command</span><span class="p">,</span>
+<span class="w">        </span><span class="p">};</span>
+
+<span class="w">        </span><span class="c1">// Push to perf event array</span>
+<span class="w">        </span><span class="k">static</span><span class="w"> </span><span class="n">EXEC_EVENTS</span><span class="p">:</span><span class="w"> </span><span class="nc">PerfEventArray</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">PerfEventArray</span><span class="p">::</span><span class="n">new</span><span class="p">(</span>
+<span class="w">            </span><span class="s">b&quot;exec_events</span><span class="se">\0</span><span class="s">&quot;</span><span class="p">.</span><span class="n">as_ptr</span><span class="p">()</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="o">*</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="p">::</span><span class="n">os</span><span class="p">::</span><span class="n">raw</span><span class="p">::</span><span class="n">c_char</span><span class="p">,</span>
+<span class="w">        </span><span class="p">);</span>
+
+<span class="w">        </span><span class="c1">// Get CPU index for per-CPU routing</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">cpu</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">aya</span><span class="p">::</span><span class="n">util</span><span class="p">::</span><span class="n">current_cpu_id</span><span class="p">();</span>
+
+<span class="w">        </span><span class="c1">// Output event</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nb">Ok</span><span class="p">(</span><span class="n">_</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">EXEC_EVENTS</span><span class="p">.</span><span class="n">output</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span><span class="w"> </span><span class="n">cpu</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">event</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="o">*</span><span class="k">const</span><span class="w"> </span><span class="n">_</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="o">*</span><span class="k">mut</span><span class="w"> </span><span class="n">_</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="c1">// Event pushed to user-space ring buffer</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Keep program running</span>
+<span class="w">    </span><span class="k">loop</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">aya</span><span class="p">::</span><span class="n">helpers</span><span class="p">::</span><span class="n">bpf_trace_printk</span><span class="p">(</span><span class="s">&quot;ghostring: working</span><span class="se">\n\0</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="n">std</span><span class="p">::</span><span class="n">hint</span><span class="p">::</span><span class="n">spin_loop</span><span class="p">();</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h3 id="btf-version-compatibility-matrix">BTF Version Compatibility Matrix <a href="#btf-version-compatibility-matrix" class="heading-anchor" aria-label="Permalink to BTF Version Compatibility Matrix">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>BTF Kernel Version</th>
+<th>Features Available</th>
+<th>GhostRing Support</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>4.14</strong></td>
+<td>Basic BTF, limited structs</td>
+<td>❌ Not supported (too old)</td>
+</tr>
+<tr>
+<td><strong>4.15 - 5.7</strong></td>
+<td>Improved BTF, some structs</td>
+<td>⚠️ Partial (missing some features)</td>
+</tr>
+<tr>
+<td><strong>5.8 - 5.15</strong></td>
+<td>Good BTF support, most structs</td>
+<td>✅ <strong>Recommended</strong> (target)</td>
+</tr>
+<tr>
+<td><strong>5.16 - 6.1</strong></td>
+<td>Enhanced BTF, new types</td>
+<td>✅ Full support</td>
+</tr>
+<tr>
+<td><strong>6.2+</strong></td>
+<td>Latest BTF, all features</td>
+<td>✅ Full support</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="co-re-failure-modes">CO-RE Failure Modes <a href="#co-re-failure-modes" class="heading-anchor" aria-label="Permalink to CO-RE Failure Modes">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Failure Mode</th>
+<th>Symptom</th>
+<th>Resolution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Missing BTF metadata</strong></td>
+<td><code>btf</code> field empty in prog info</td>
+<td>Ensure <code>/sys/kernel/btf/vmlinux</code> exists; rebuild kernel</td>
+</tr>
+<tr>
+<td><strong>Type name mismatch</strong></td>
+<td><code>btf.type_id("struct task_struct")</code> returns 0</td>
+<td>Check kernel BTF matches expected types; update Aya version</td>
+</tr>
+<tr>
+<td><strong>Offset drift</strong></td>
+<td>Field values wrong after kernel update</td>
+<td>Rebuild with new kernel headers; Aya BTF should handle this</td>
+</tr>
+<tr>
+<td><strong>License restriction</strong></td>
+<td>Verifier rejects non-GPLv3 program</td>
+<td>Ensure <code>LICENSE</code> field = <code>"GPLv3"</code> in Cargo.toml/build.rs</td>
+</tr>
+<tr>
+<td><strong>Helper not available</strong></td>
+<td><code>bpf_probe_read_user_str</code> unavailable</td>
+<td>Check GPLv3 compliance; consider alternative approaches</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="debugging-btfco-re-issues">Debugging BTF/CO-RE Issues <a href="#debugging-btfco-re-issues" class="heading-anchor" aria-label="Permalink to Debugging BTF/CO-RE Issues">#</a></h3>
+<div class="code-block-container" data-lang="BASH">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">BASH</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># Check if program has BTF attached</span>
+bpftool<span class="w"> </span>prog<span class="w"> </span>show<span class="w"> </span>id<span class="w"> </span>&lt;prog_id&gt;<span class="w"> </span>btf
+
+<span class="c1"># View BTF type tree</span>
+bpftool<span class="w"> </span>btf<span class="w"> </span>dump<span class="w"> </span>verbose<span class="w"> </span>/proc/self/exe
+
+<span class="c1"># Check verifier errors related to BTF</span>
+dmesg<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span><span class="s2">&quot;btf\|co-re\|type&quot;</span>
+
+<span class="c1"># Verify program loads on target kernel</span>
+sudo<span class="w"> </span>cargo<span class="w"> </span>run<span class="w"> </span>--release<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span><span class="s2">&quot;load\|attach\|btf&quot;</span>
+</code></pre>
+</div>
+<h3 id="aya-btf-api-reference">Aya BTF API Reference <a href="#aya-btf-api-reference" class="heading-anchor" aria-label="Permalink to Aya BTF API Reference">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>btf</code></td>
+<td><code>fn btf(&amp;self) -&gt; Option&lt;&amp;Btf&gt;</code></td>
+<td>Get Btf reference (None if not available)</td>
+</tr>
+<tr>
+<td><code>type_id</code></td>
+<td><code>fn type_id(&amp;self, name: &amp;str) -&gt; Option&lt;u32&gt;</code></td>
+<td>Look up type ID by name</td>
+</tr>
+<tr>
+<td><code>field_offset</code></td>
+<td><code>fn field_offset(&amp;self, type_id: u32, field: &amp;str) -&gt; Option&lt;u32&gt;</code></td>
+<td>Get offset of field within struct</td>
+</tr>
+<tr>
+<td><code>enum_id</code></td>
+<td><code>fn enum_id(&amp;self, name: &amp;str) -&gt; Option&lt;u32&gt;</code></td>
+<td>Look up enum type ID</td>
+</tr>
+<tr>
+<td><code>func_id</code></td>
+<td><code>fn func_id(&amp;self, name: &amp;str) -&gt; Option&lt;u32&gt;</code></td>
+<td>Look up function type ID</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="performance-impact-of-btf">Performance Impact of BTF <a href="#performance-impact-of-btf" class="heading-anchor" aria-label="Permalink to Performance Impact of BTF">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>With BTF</th>
+<th>Without BTF</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Load time</strong></td>
+<td>+5-10%</td>
+<td>Baseline</td>
+</tr>
+<tr>
+<td><strong>Verifier time</strong></td>
+<td>+2-5%</td>
+<td>Baseline</td>
+</tr>
+<tr>
+<td><strong>Runtime overhead</strong></td>
+<td>Negligible</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td><strong>Field access latency</strong></td>
+<td>Same (helpers inline)</td>
+<td>Same</td>
+</tr>
+<tr>
+<td><strong>Compatility</strong></td>
+<td>Multi-kernel</td>
+<td>Single kernel only</td>
+</tr>
+<tr>
+<td><strong>Binary size</strong></td>
+<td>+2-5KB</td>
+<td>Smaller</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Conclusion</strong>: BTF overhead is minimal; CO-RE benefits far outweigh costs.</p>
+<h3 id="future-btf-advanced-features">Future: BTF Advanced Features <a href="#future-btf-advanced-features" class="heading-anchor" aria-label="Permalink to Future: BTF Advanced Features">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Status</th>
+<th>Roadmap</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>BTF Kfuncs</strong></td>
+<td>Emerging</td>
+<td>Potential replacement for some helpers</td>
+</tr>
+<tr>
+<td><strong>Type completion</strong></td>
+<td>Work in progress</td>
+<td>Allow forward declarations</td>
+</tr>
+<tr>
+<td><strong>BTF virtualization</strong></td>
+<td>Experimental</td>
+<td>KVM/VM BTF passing</td>
+</tr>
+<tr>
+<td><strong>Userspace BTF</strong></td>
+<td>Available</td>
+<td>Parse BTF from user binaries</td>
+</tr>
+<tr>
+<td><strong>BTF sampling</strong></td>
+<td>Available</td>
+<td>Profile-guided optimization</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="related-documentation">Related Documentation <a href="#related-documentation" class="heading-anchor" aria-label="Permalink to Related Documentation">#</a></h2>
+<ul>
+<li><a href="ebpf-internals.html">eBPF Internals &amp; Bytecode</a> — ELF sections, relocation mechanisms, and verifier requirements.</li>
+<li><a href="aya-framework.html">Aya Framework</a> — How Aya parses and relocates BTF types during program loading.</li>
+<li><a href="kernel-instrumentation.html">Kernel Instrumentation</a> — Accessing kernel context and data structures safely across kernel versions.</li>
+<li><a href="ghostring-common-structs.html">ghostring-common Struct Design</a> — Designing C-compatible structs with ABI stability across architectures.</li>
+<li><a href="development-environment.html">Development Environment</a> — Verifying <code>/sys/kernel/btf/vmlinux</code> and system dependencies.</li>
+<li><a href="roadmap-features-deep.html">Roadmap Features Deep Dive</a> — Applying CO-RE to complex nested kernel structures for path and socket extraction.</li>
+<li><a href="troubleshooting-guide.html">Troubleshooting Guide</a> — Diagnosing missing BTF sections and relocation failures.</li>
+</ul>
+        </article>
+
+        <div class="doc-pagination">
+
+      <a href="aya-framework.html" class="pagination-card prev-card">
+        <span class="pagination-label">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          Previous
+        </span>
+        <span class="pagination-title">Aya Framework Deep Dive for GhostRing</span>
+      </a>
+
+      <a href="ghostring-common-structs.html" class="pagination-card next-card">
+        <span class="pagination-label">
+          Next
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </span>
+        <span class="pagination-title">ghostring-common Structs</span>
+      </a>
+</div>
+
+        <footer class="docs-footer">
+          <div class="footer-left">
+            <span>GhostRing eBPF Security Subsystem • Licensed under GPLv3</span>
+          </div>
+          <div class="footer-right">
+            <a href="#top" class="back-to-top-btn">Back to top ↑</a>
+          </div>
+        </footer>
+      </div>
+    </main>
+
+    <!-- Right "On This Page" Sidebar -->
+    <aside class="docs-toc-aside">
+      <div class="toc-sticky-container">
+        <div class="toc-heading">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+          <span>On this page</span>
+        </div>
+        <ul class="toc-list">
+
+      <li class="toc-item toc-item-h2">
+        <a href="#btf-bpf-type-format-fundamentals" class="toc-link" data-heading="btf-bpf-type-format-fundamentals">BTF (BPF Type Format) Fundamentals</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#what-is-btf" class="toc-link" data-heading="what-is-btf">What is BTF?</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#btf-embedding-in-elf" class="toc-link" data-heading="btf-embedding-in-elf">BTF Embedding in ELF</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#btf-structure" class="toc-link" data-heading="btf-structure">BTF Structure</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#btf-kernel-requirements" class="toc-link" data-heading="btf-kernel-requirements">BTF Kernel Requirements</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#verifying-btf-availability" class="toc-link" data-heading="verifying-btf-availability">Verifying BTF Availability</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#btf-and-co-re-in-practice" class="toc-link" data-heading="btf-and-co-re-in-practice">BTF and CO-RE in Practice</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#ayas-btf-support" class="toc-link" data-heading="ayas-btf-support">Aya&#x27;s BTF Support</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#co-re-compile-once-run-everywhere-mechanics" class="toc-link" data-heading="co-re-compile-once-run-everywhere-mechanics">CO-RE (Compile Once, Run Everywhere) Mechanics</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#co-re-philosophy" class="toc-link" data-heading="co-re-philosophy">CO-RE Philosophy</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#how-co-re-works" class="toc-link" data-heading="how-co-re-works">How CO-RE Works</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#co-re-enabled-features-in-ghostring" class="toc-link" data-heading="co-re-enabled-features-in-ghostring">CO-RE Enabled Features in GhostRing</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#co-re-requirements-by-feature" class="toc-link" data-heading="co-re-requirements-by-feature">CO-RE Requirements by Feature</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#co-re-compatible-ebpf-program-skeleton" class="toc-link" data-heading="co-re-compatible-ebpf-program-skeleton">CO-RE Compatible eBPF Program Skeleton</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#btf-version-compatibility-matrix" class="toc-link" data-heading="btf-version-compatibility-matrix">BTF Version Compatibility Matrix</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#co-re-failure-modes" class="toc-link" data-heading="co-re-failure-modes">CO-RE Failure Modes</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#debugging-btfco-re-issues" class="toc-link" data-heading="debugging-btfco-re-issues">Debugging BTF/CO-RE Issues</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#aya-btf-api-reference" class="toc-link" data-heading="aya-btf-api-reference">Aya BTF API Reference</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#performance-impact-of-btf" class="toc-link" data-heading="performance-impact-of-btf">Performance Impact of BTF</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#future-btf-advanced-features" class="toc-link" data-heading="future-btf-advanced-features">Future: BTF Advanced Features</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#related-documentation" class="toc-link" data-heading="related-documentation">Related Documentation</a>
+      </li>
+</ul>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Interactive Search Modal -->
+  <div id="search-modal" class="search-modal" aria-hidden="true" role="dialog">
+    <div class="search-modal-backdrop"></div>
+    <div class="search-modal-box">
+      <div class="search-input-wrapper">
+        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="search-input" class="search-input" placeholder="Search documentation, topics, APIs, CLI flags..." autocomplete="off">
+        <button id="search-clear-btn" class="search-clear-btn" aria-label="Clear query">&times;</button>
+      </div>
+      <div id="search-results" class="search-results">
+        <div class="search-initial-state">Type a keyword to search docs...</div>
+      </div>
+      <div class="search-modal-footer">
+        <span class="search-hint"><kbd>↑</kbd><kbd>↓</kbd> to navigate</span>
+        <span class="search-hint"><kbd>Enter</kbd> to select</span>
+        <span class="search-hint"><kbd>Esc</kbd> to close</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/search-index.js"></script>
+  <script src="assets/docs.js"></script>
+</body>
+</html>

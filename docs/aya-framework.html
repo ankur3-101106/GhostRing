@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aya Framework Deep Dive for GhostRing | GhostRing Documentation</title>
+  <meta name="description" content="Deep dive into the pure-Rust Aya ecosystem, ELF loading, map abstractions, and helper bindings. - GhostRing Ring 0 eBPF Telemetry Engine">
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+  <link rel="stylesheet" href="assets/docs.css">
+  <script>
+    (function() {
+      const stored = localStorage.getItem('ghostring_docs_theme');
+      if (stored) {
+        document.documentElement.setAttribute('data-theme', stored);
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+</head>
+<body class="docs-body">
+
+  <!-- Top Navigation Bar -->
+  <header class="top-nav">
+    <div class="top-nav-inner">
+      <div class="nav-left">
+        <button id="mobile-sidebar-toggle" class="nav-icon-btn mobile-only" aria-label="Open Sidebar Menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+        <a href="index.html" class="brand-link">
+          <img src="assets/logo.svg" alt="GhostRing Logo" class="brand-logo" width="32" height="32">
+          <div class="brand-info">
+            <span class="brand-name">GhostRing</span>
+            <span class="brand-tag">Ring 0 Telemetry</span>
+          </div>
+        </a>
+        <span class="version-pill">v0.1.0</span>
+      </div>
+
+      <div class="nav-center">
+        <button id="search-trigger-btn" class="search-trigger" type="button" aria-label="Search documentation">
+          <svg class="search-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <span class="search-placeholder">Search documentation...</span>
+          <span class="search-shortcut"><kbd>Ctrl</kbd><kbd>K</kbd></span>
+        </button>
+      </div>
+
+      <div class="nav-right">
+        <button id="theme-toggle" class="nav-icon-btn" type="button" aria-label="Toggle light/dark theme" title="Toggle theme">
+          <svg class="theme-icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+          <svg class="theme-icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        </button>
+        <a href="https://github.com/ankur/ghostring" target="_blank" rel="noopener noreferrer" class="nav-icon-btn github-btn" aria-label="GitHub Repository" title="GitHub">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"></path></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Documentation Container -->
+  <div class="docs-layout">
+    
+    <!-- Left Navigation Sidebar -->
+    <aside id="docs-sidebar" class="docs-sidebar">
+      <div class="sidebar-scroller">
+        <nav class="sidebar-nav" aria-label="Main Navigation">
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">Documentation Suite</div>
+      <ul class="sidebar-links">
+        <li>
+          <a href="index.html" class="sidebar-link">
+            <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            <span>Documentation Hub</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">01</span>
+        <span class="group-title">Foundational Architecture & Environment</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="architecture-overview.html" class="sidebar-link" title="Architecture Overview">
+            <span class="link-bullet"></span>
+            <span class="link-text">Architecture Overview</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="development-environment.html" class="sidebar-link" title="Development Environment">
+            <span class="link-bullet"></span>
+            <span class="link-text">Development Environment</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ebpf-fundamentals.html" class="sidebar-link" title="eBPF Fundamentals">
+            <span class="link-bullet"></span>
+            <span class="link-text">eBPF Fundamentals</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="kernel-instrumentation.html" class="sidebar-link" title="Kernel Instrumentation">
+            <span class="link-bullet"></span>
+            <span class="link-text">Kernel Instrumentation</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">02</span>
+        <span class="group-title">Kernel Space & eBPF Engineering</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="ebpf-internals.html" class="sidebar-link" title="eBPF Internals &amp; Bytecode">
+            <span class="link-bullet"></span>
+            <span class="link-text">eBPF Internals &amp; Bytecode</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="aya-framework.html" class="sidebar-link active" title="Aya Framework">
+            <span class="link-bullet"></span>
+            <span class="link-text">Aya Framework</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="btf-co-re-deep-dive.html" class="sidebar-link" title="BTF &amp; CO-RE Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">BTF &amp; CO-RE Deep Dive</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ghostring-common-structs.html" class="sidebar-link" title="ghostring-common Structs">
+            <span class="link-bullet"></span>
+            <span class="link-text">ghostring-common Structs</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">03</span>
+        <span class="group-title">Telemetry & User Space Pipeline</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="event-transport.html" class="sidebar-link" title="Event Transport">
+            <span class="link-bullet"></span>
+            <span class="link-text">Event Transport</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="perf-buffer-internals.html" class="sidebar-link" title="Perf Buffer Internals">
+            <span class="link-bullet"></span>
+            <span class="link-text">Perf Buffer Internals</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ghostring-user-daemon.html" class="sidebar-link" title="ghostring User Daemon">
+            <span class="link-bullet"></span>
+            <span class="link-text">ghostring User Daemon</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">04</span>
+        <span class="group-title">Security, Compliance & Governance</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="security-requirements.html" class="sidebar-link" title="Security Requirements">
+            <span class="link-bullet"></span>
+            <span class="link-text">Security Requirements</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="security-model-deep-dive.html" class="sidebar-link" title="Security Model Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">Security Model Deep Dive</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="license-compliance-deep.html" class="sidebar-link" title="License Compliance Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">License Compliance Deep Dive</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">05</span>
+        <span class="group-title">Quality Assurance, Operations & Roadmap</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="build-system-workspace.html" class="sidebar-link" title="Build System &amp; Workspace">
+            <span class="link-bullet"></span>
+            <span class="link-text">Build System &amp; Workspace</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="testing-strategy.html" class="sidebar-link" title="Testing Strategy">
+            <span class="link-bullet"></span>
+            <span class="link-text">Testing Strategy</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="troubleshooting-guide.html" class="sidebar-link" title="Troubleshooting Guide">
+            <span class="link-bullet"></span>
+            <span class="link-text">Troubleshooting Guide</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="roadmap-features-deep.html" class="sidebar-link" title="Roadmap Features Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">Roadmap Features Deep Dive</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+</nav>
+      </div>
+    </aside>
+    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+    <!-- Center Content Article -->
+    <main class="docs-main">
+      <div class="content-wrapper">
+        
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <a href="index.html" class="crumb-link">Docs</a>
+      <span class="crumb-sep">/</span>
+      <span class="crumb-cat">Kernel Space &amp; eBPF Engineering</span>
+      <span class="crumb-sep">/</span>
+      <span class="crumb-active">Aya Framework Deep Dive for GhostRing</span>
+    </nav>
+    
+        
+        <article class="markdown-body">
+          <h1 id="aya-framework-deep-dive-for-ghostring">Aya Framework Deep Dive for GhostRing <a href="#aya-framework-deep-dive-for-ghostring" class="heading-anchor" aria-label="Permalink to Aya Framework Deep Dive for GhostRing">#</a></h1>
+<h2 id="aya-crate-architecture">Aya Crate Architecture <a href="#aya-crate-architecture" class="heading-anchor" aria-label="Permalink to Aya Crate Architecture">#</a></h2>
+<p>Aya is a pure-Rust eBPF framework that provides the bridge between Rust eBPF bytecode and the Linux kernel. GhostRing uses Aya for program loading, map management, and BPF helper access.</p>
+<h3 id="core-crates-in-aya-ecosystem">Core Crates in Aya Ecosystem <a href="#core-crates-in-aya-ecosystem" class="heading-anchor" aria-label="Permalink to Core Crates in Aya Ecosystem">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Crate</th>
+<th>Purpose</th>
+<th>GhostRing Usage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>aya</code></td>
+<td>Core framework, ELF loading, map support</td>
+<td>Primary dependency</td>
+</tr>
+<tr>
+<td><code>aya-ebpf</code></td>
+<td>BPF helper bindings, no_std support</td>
+<td>Used in ghostring-ebpf</td>
+</tr>
+<tr>
+<td><code>aya-poll</code></td>
+<td>Tokio async polling for ring buffers</td>
+<td>Used in ghostring user daemon</td>
+</tr>
+<tr>
+<td><code>aya-bpf</code></td>
+<td>Low-level BPF operations</td>
+<td>Core eBPF operations</td>
+</tr>
+<tr>
+<td><code>aya-utils</code></td>
+<td>Utility types and helpers</td>
+<td>Occasional use</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="elf-loading-and-linking">ELF Loading and Linking <a href="#elf-loading-and-linking" class="heading-anchor" aria-label="Permalink to ELF Loading and Linking">#</a></h2>
+<h3 id="bpf-linker-integration"><code>bpf-linker</code> Integration <a href="#bpf-linker-integration" class="heading-anchor" aria-label="Permalink to bpf-linker Integration">#</a></h3>
+<p>The <code>bpf-linker</code> cargo utility handles ELF section layout for BPF targets. It:</p>
+<ol>
+<li><strong>Reorganizes sections</strong> for <code>bpfel-unknown-none</code> target</li>
+<li><strong>Embeds BTF metadata</strong> for CO-RE support</li>
+<li><strong>Generates <code>__license</code></strong> section from Cargo metadata</li>
+<li><strong>Outputs <code>.bc</code> bytecode</strong> for kernel loading</li>
+</ol>
+<h3 id="cargo-configuration">Cargo Configuration <a href="#cargo-configuration" class="heading-anchor" aria-label="Permalink to Cargo Configuration">#</a></h3>
+<div class="code-block-container" data-lang="TOML">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">TOML</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># ghostring-ebpf/Cargo.toml</span>
+<span class="k">[package]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ghostring-ebpf&quot;</span>
+<span class="n">crate-type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;cdylib&quot;</span><span class="p">]</span>
+
+<span class="k">[dependencies]</span>
+<span class="n">aya</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.5&quot;</span><span class="w">  </span><span class="c1"># version matching aya-ebpf</span>
+<span class="n">aya-ebpf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.5&quot;</span>
+</code></pre>
+</div>
+<h3 id="build-pipeline">Build Pipeline <a href="#build-pipeline" class="heading-anchor" aria-label="Permalink to Build Pipeline">#</a></h3>
+<div class="code-block-container" data-lang="BASH">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">BASH</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># Step 1: Compile eBPF bytecode</span>
+cargo<span class="w"> </span>build<span class="w"> </span>--release<span class="w"> </span>--target<span class="w"> </span>bpfel-unknown-none
+
+<span class="c1"># Step 2: bpf-linker processes ELF</span>
+<span class="c1"># - Reorganizes sections</span>
+<span class="c1"># - Embeds BTF if available</span>
+<span class="c1"># - Adds __license section</span>
+<span class="c1"># - Outputs: target/bpfel-unknown-none/release/ghostring_ebpf</span>
+
+<span class="c1"># Step 3: Load with aya</span>
+aya::EBPF::load<span class="o">(</span><span class="s2">&quot;/path/to/ghostring_ebpf&quot;</span><span class="o">)</span>
+</code></pre>
+</div>
+<h2 id="map-abstractions">Map Abstractions <a href="#map-abstractions" class="heading-anchor" aria-label="Permalink to Map Abstractions">#</a></h2>
+<h3 id="perfeventarray-map-wrapper">PerfEventArray Map Wrapper <a href="#perfeventarray-map-wrapper" class="heading-anchor" aria-label="Permalink to PerfEventArray Map Wrapper">#</a></h3>
+<p>Aya provides a safe Rust wrapper around the <code>PerfEventArray</code> map type:</p>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="k">use</span><span class="w"> </span><span class="n">aya</span><span class="p">::</span><span class="n">maps</span><span class="p">::</span><span class="n">PerfEventArray</span><span class="p">;</span>
+<span class="k">use</span><span class="w"> </span><span class="n">aya</span><span class="p">::</span><span class="n">bindings</span><span class="p">::</span><span class="n">perf_event_map</span><span class="p">;</span>
+
+<span class="k">static</span><span class="w"> </span><span class="n">EXEC_EVENTS</span><span class="p">:</span><span class="w"> </span><span class="nc">PerfEventArray</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">PerfEventArray</span><span class="p">::</span><span class="n">new</span><span class="p">(</span>
+<span class="w">    </span><span class="s">b&quot;exec_events</span><span class="se">\0</span><span class="s">&quot;</span><span class="p">.</span><span class="n">as_ptr</span><span class="p">()</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="o">*</span><span class="k">const</span><span class="w"> </span><span class="n">c_char</span><span class="p">,</span>
+<span class="p">);</span>
+</code></pre>
+</div>
+<h4 id="key-methods">Key Methods <a href="#key-methods" class="heading-anchor" aria-label="Permalink to Key Methods">#</a></h4>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>new</code></td>
+<td><code>fn new(name: *const c_char) -&gt; Self</code></td>
+<td>Create map with name</td>
+</tr>
+<tr>
+<td><code>try_poll</code></td>
+<td><code>fn try_poll(&amp;self, callback: F) -&gt; Result&lt;usize&gt;</code></td>
+<td>Poll and call callback</td>
+</tr>
+<tr>
+<td><code>try_ready</code></td>
+<td><code>fn try_ready(&amp;self) -&gt; Result&lt;usize&gt;</code></td>
+<td>Check if data ready</td>
+</tr>
+<tr>
+<td><code>slice</code></td>
+<td><code>fn data(&amp;self) -&gt; &amp;[u8]</code></td>
+<td>Get ring buffer data slice</td>
+</tr>
+</tbody>
+</table></div>
+<h4 id="polling-pattern-in-tokio">Polling Pattern in Tokio <a href="#polling-pattern-in-tokio" class="heading-anchor" aria-label="Permalink to Polling Pattern in Tokio">#</a></h4>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// In ghostring user daemon</span>
+<span class="k">loop</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Poll all per-CPU rings</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="n">cpu</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="mi">0</span><span class="o">..</span><span class="n">num_cpus</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nb">Ok</span><span class="p">(</span><span class="n">len</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">exec_events</span><span class="p">.</span><span class="n">try_poll</span><span class="p">(</span><span class="n">cpu</span><span class="p">,</span><span class="w"> </span><span class="o">|</span><span class="n">data</span><span class="o">|</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="c1">// Parse ExecveEvent from raw bytes</span>
+<span class="w">            </span><span class="n">parse_event</span><span class="p">(</span><span class="n">data</span><span class="p">);</span>
+<span class="w">        </span><span class="p">})</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="c1">// Process events</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="c1">// Async yield</span>
+<span class="w">    </span><span class="n">tokio</span><span class="p">::</span><span class="n">task</span><span class="p">::</span><span class="n">yield_now</span><span class="p">().</span><span class="k">await</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h3 id="hash-map-type-for-future-roadmap">Hash Map Type (For Future Roadmap) <a href="#hash-map-type-for-future-roadmap" class="heading-anchor" aria-label="Permalink to Hash Map Type (For Future Roadmap)">#</a></h3>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="k">use</span><span class="w"> </span><span class="n">aya</span><span class="p">::</span><span class="n">maps</span><span class="p">::</span><span class="n">HashMap</span><span class="p">;</span>
+
+<span class="k">static</span><span class="w"> </span><span class="n">PROCESS_TABLE</span><span class="p">:</span><span class="w"> </span><span class="nc">HashMap</span><span class="o">&lt;</span><span class="kt">u32</span><span class="p">,</span><span class="w"> </span><span class="n">ProcessInfo</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">HashMap</span><span class="p">::</span><span class="n">new</span><span class="p">(</span>
+<span class="w">    </span><span class="s">b&quot;process_table</span><span class="se">\0</span><span class="s">&quot;</span><span class="p">.</span><span class="n">as_ptr</span><span class="p">()</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="o">*</span><span class="k">const</span><span class="w"> </span><span class="n">c_char</span><span class="p">,</span>
+<span class="p">);</span>
+</code></pre>
+</div>
+<h4 id="hash-map-operations">Hash Map Operations <a href="#hash-map-operations" class="heading-anchor" aria-label="Permalink to Hash Map Operations">#</a></h4>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Complexity</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>insert</code></td>
+<td>O(1) average</td>
+</tr>
+<tr>
+<td><code>lookup</code></td>
+<td>O(1) average</td>
+</tr>
+<tr>
+<td><code>delete</code></td>
+<td>O(1) average</td>
+</tr>
+<tr>
+<td><strong>Memory</strong></td>
+<td>Map size at compile time</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="bpf-helper-bindings">BPF Helper Bindings <a href="#bpf-helper-bindings" class="heading-anchor" aria-label="Permalink to BPF Helper Bindings">#</a></h2>
+<h3 id="aya-wrapped-helpers">Aya-Wrapped Helpers <a href="#aya-wrapped-helpers" class="heading-anchor" aria-label="Permalink to Aya-Wrapped Helpers">#</a></h3>
+<p>Aya provides safe Rust bindings for BPF helpers, ensuring:</p>
+<ul>
+<li><strong>Correct signatures</strong>: Match kernel function prototypes</li>
+<li><strong>License enforcement</strong>: Only GPLv3 helpers available</li>
+<li><strong>Type safety</strong>: Rust types instead of raw integers</li>
+<li><strong>No-std compatibility</strong>: Compiles without <code>std</code></li>
+</ul>
+<h3 id="common-helpers-used-by-ghostring">Common Helpers Used by GhostRing <a href="#common-helpers-used-by-ghostring" class="heading-anchor" aria-label="Permalink to Common Helpers Used by GhostRing">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Helper</th>
+<th>Aya Binding</th>
+<th>Rust Signature</th>
+<th>Usage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>bpf_ktime_get_ns</code></td>
+<td><code>aya::helpers::bpf_ktime_get_ns</code></td>
+<td><code>-&gt; u64</code></td>
+<td>Nanosecond timestamps</td>
+</tr>
+<tr>
+<td><code>bpf_get_current_pid_tgid</code></td>
+<td><code>aya::helpers::bpf_get_current_pid_tgid</code></td>
+<td><code>-&gt; u64</code></td>
+<td>PID in upper 32, TID in lower 32</td>
+</tr>
+<tr>
+<td><code>bpf_get_current_uid_gid</code></td>
+<td><code>aya::helpers::bpf_get_current_uid_gid</code></td>
+<td><code>-&gt; u64</code></td>
+<td>UID in upper 32, GID in lower 32</td>
+</tr>
+<tr>
+<td><code>bpf_probe_read_user</code></td>
+<td><code>aya::helpers::bpf_probe_read_user</code></td>
+<td><code>*mut c_void, u32, u32</code></td>
+<td>Safe user memory read</td>
+</tr>
+<tr>
+<td><code>bpf_perf_event_output</code></td>
+<td><code>aya::helpers::bpf_perf_event_output</code></td>
+<td>...</td>
+<td>Ring buffer push</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="helper-licensing-table">Helper Licensing Table <a href="#helper-licensing-table" class="heading-anchor" aria-label="Permalink to Helper Licensing Table">#</a></h3>
+<p>Aya enforces GPLv3 at compile time:</p>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// Helper is available only when license = &quot;GPLv3&quot;</span>
+<span class="cp">#[aya::pbpf::xdp]</span>
+<span class="cp">#[link_section = </span><span class="s">&quot;__license&quot;</span><span class="cp">]</span>
+<span class="k">static</span><span class="w"> </span><span class="n">LICENSE</span><span class="p">:</span><span class="w"> </span><span class="kp">&amp;</span><span class="p">[</span><span class="kt">u8</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">b&quot;GPLv3</span><span class="se">\0</span><span class="s">&quot;</span><span class="p">;</span>
+
+<span class="c1">// Without GPLv3, these helpers are excluded:</span>
+<span class="c1">// - bpf_probe_read_user_str (deep memory read)</span>
+<span class="c1">// - Helper calls trigger verifier error: &quot;license check failed&quot;</span>
+</code></pre>
+</div>
+<h2 id="async-polling-model">Async Polling Model <a href="#async-polling-model" class="heading-anchor" aria-label="Permalink to Async Polling Model">#</a></h2>
+<h3 id="aya-poll-integration">Aya-Poll Integration <a href="#aya-poll-integration" class="heading-anchor" aria-label="Permalink to Aya-Poll Integration">#</a></h3>
+<p>The <code>aya-poll</code> crate provides Tokio-compatible pollers for eBPF maps:</p>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="k">use</span><span class="w"> </span><span class="n">aya_poll</span><span class="p">::</span><span class="n">BpfPoller</span><span class="p">;</span>
+
+<span class="c1">// Create poller from map</span>
+<span class="kd">let</span><span class="w"> </span><span class="n">poller</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">BpfPoller</span><span class="p">::</span><span class="n">new</span><span class="p">(</span><span class="o">&amp;</span><span class="n">exec_events</span><span class="p">,</span><span class="w"> </span><span class="o">|</span><span class="n">data</span><span class="p">:</span><span class="w"> </span><span class="kp">&amp;</span><span class="p">[</span><span class="kt">u8</span><span class="p">]</span><span class="o">|</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Callback invoked when data available</span>
+<span class="w">    </span><span class="n">handle_exec_event</span><span class="p">(</span><span class="n">data</span><span class="p">);</span>
+<span class="p">}).</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;poller init&quot;</span><span class="p">);</span>
+</code></pre>
+</div>
+<h4 id="poller-lifecycle">Poller Lifecycle <a href="#poller-lifecycle" class="heading-anchor" aria-label="Permalink to Poller Lifecycle">#</a></h4>
+<ol>
+<li><strong>Start</strong>: <code>poller.run()</code> - begins Tokio timer loop</li>
+<li><strong>Poll</strong>: Periodic checking of per-CPU ring buffers</li>
+<li><strong>Callback</strong>: User-provoked for each ready buffer</li>
+<li><strong>Stop</strong>: <code>poller.stop()</code> - clean shutdown</li>
+</ol>
+<h3 id="polling-interval-configuration">Polling Interval Configuration <a href="#polling-interval-configuration" class="heading-anchor" aria-label="Permalink to Polling Interval Configuration">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Recommended</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Poll interval</strong></td>
+<td>1ms</td>
+<td>5-10ms (lower overhead)</td>
+</tr>
+<tr>
+<td><strong>Batch size</strong></td>
+<td>32 events</td>
+<td>64-128 (amortize overhead)</td>
+</tr>
+<tr>
+<td><strong>CPU polling</strong></td>
+<td>All CPUs</td>
+<td>Mask to active CPUs only</td>
+</tr>
+<tr>
+<td><strong>Timeout</strong></td>
+<td>None</td>
+<td>1-5s watchdog timeout</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="backpressure-handling">Backpressure Handling <a href="#backpressure-handling" class="heading-anchor" aria-label="Permalink to Backpressure Handling">#</a></h3>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// Handle full buffers gracefully</span>
+<span class="k">if</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nb">Ok</span><span class="p">(</span><span class="n">len</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">try_poll</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="n">len</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// No data - yield or sleep</span>
+<span class="w">        </span><span class="n">tokio</span><span class="p">::</span><span class="n">task</span><span class="p">::</span><span class="n">yield_now</span><span class="p">().</span><span class="k">await</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Process events</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Error - map might be full</span>
+<span class="w">    </span><span class="c1">// Consider increasing buffer sizes</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h2 id="error-handling-and-recovery">Error Handling and Recovery <a href="#error-handling-and-recovery" class="heading-anchor" aria-label="Permalink to Error Handling and Recovery">#</a></h2>
+<h3 id="common-error-types">Common Error Types <a href="#common-error-types" class="heading-anchor" aria-label="Permalink to Common Error Types">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Cause</th>
+<th>Recovery</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>VerifierError::License</code></td>
+<td>Non-GPLv3 license section</td>
+<td>Fix LICENSE field</td>
+</tr>
+<tr>
+<td><code>MapError::MapFull</code></td>
+<td>Ring buffer overflow</td>
+<td>Increase max entries</td>
+</tr>
+<tr>
+<td><code>PollError::InvalidKey</code></td>
+<td>Bad CPU index</td>
+<td>Verify CPU online</td>
+</tr>
+<tr>
+<td><code>HelperError::NotAvailable</code></td>
+<td>Helper restricted by license</td>
+<td>Check license compliance</td>
+</tr>
+<tr>
+<td><code>IoError::NotFound</code></td>
+<td>Map not loaded</td>
+<td>Reload eBPF program</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="recovery-strategies">Recovery Strategies <a href="#recovery-strategies" class="heading-anchor" aria-label="Permalink to Recovery Strategies">#</a></h3>
+<ol>
+<li><strong>Soft restart</strong>: Reload eBPF program without reboot</li>
+<li><strong>Buffer resize</strong>: Increase <code>max_entries</code> in map definition</li>
+<li><strong>CPU hot-unplug</strong>: Offline problematic CPUs</li>
+<li><strong>Full system restart</strong>: When state corruption suspected</li>
+</ol>
+<h2 id="debugging-and-introspection">Debugging and Introspection <a href="#debugging-and-introspection" class="heading-anchor" aria-label="Permalink to Debugging and Introspection">#</a></h2>
+<h3 id="aya-debug-features">Aya Debug Features <a href="#aya-debug-features" class="heading-anchor" aria-label="Permalink to Aya Debug Features">#</a></h3>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// Enable debug logging (development only)</span>
+<span class="n">aya</span><span class="p">::</span><span class="n">logger</span><span class="p">::</span><span class="n">init</span><span class="p">()</span><span class="o">?</span><span class="p">;</span><span class="w">  </span><span class="c1">// Initialize BPF logging</span>
+
+<span class="c1">// Runtime introspection</span>
+<span class="kd">let</span><span class="w"> </span><span class="n">stats</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">exec_events</span><span class="p">.</span><span class="n">stats</span><span class="p">()</span><span class="o">?</span><span class="p">;</span><span class="w">  </span><span class="c1">// Map statistics</span>
+</code></pre>
+</div>
+<h3 id="kernel-logging">Kernel Logging <a href="#kernel-logging" class="heading-anchor" aria-label="Permalink to Kernel Logging">#</a></h3>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// Tracepoint-based debugging</span>
+<span class="n">bpf_trace_printk</span><span class="p">(</span><span class="s">&quot;event: pid=%d</span><span class="se">\\</span><span class="s">n&quot;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">pid</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">i64</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+</code></pre>
+</div>
+<p>Output viewable via:</p>
+<div class="code-block-container" data-lang="BASH">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">BASH</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code>sudo<span class="w"> </span>cat<span class="w"> </span>/sys/kernel/debug/tracing/trace_pipe
+sudo<span class="w"> </span>dmesg<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>ghostring
+</code></pre>
+</div>
+<h3 id="aya-inspect-metrics-export">Aya Inspect (Metrics Export) <a href="#aya-inspect-metrics-export" class="heading-anchor" aria-label="Permalink to Aya Inspect (Metrics Export)">#</a></h3>
+<p>Future roadmap item for SIEM integration:
+- Export metrics via <code>/proc/aya/...</code>
+- Prometheus metrics endpoint
+- Real-time event counters</p>
+<h2 id="version-compatibility">Version Compatibility <a href="#version-compatibility" class="heading-anchor" aria-label="Permalink to Version Compatibility">#</a></h2>
+<h3 id="aya-version-matrix">Aya Version Matrix <a href="#aya-version-matrix" class="heading-anchor" aria-label="Permalink to Aya Version Matrix">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Aya Version</th>
+<th>Rust Target</th>
+<th>Linux Kernel</th>
+<th>BTF Support</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0.1</code></td>
+<td>Stable</td>
+<td>4.15+</td>
+<td>Basic</td>
+<td>Early CO-RE</td>
+</tr>
+<tr>
+<td><code>0.2</code></td>
+<td>Stable</td>
+<td>5.8+</td>
+<td>Improved</td>
+<td>PerfEventArray</td>
+</tr>
+<tr>
+<td><code>0.3</code></td>
+<td>Nightly</td>
+<td>5.10+</td>
+<td>Good</td>
+<td>Hash maps</td>
+</tr>
+<tr>
+<td><code>0.4</code>+</td>
+<td>Nightly</td>
+<td>5.8+</td>
+<td><strong>Excellent</strong></td>
+<td>Current, full CO-RE</td>
+</tr>
+<tr>
+<td><code>0.6</code> (future)</td>
+<td>Nightly</td>
+<td>6.1+</td>
+<td>Planned</td>
+<td>New helpers</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="minimum-supported-versions">Minimum Supported Versions <a href="#minimum-supported-versions" class="heading-anchor" aria-label="Permalink to Minimum Supported Versions">#</a></h3>
+<ul>
+<li><strong>Rust</strong>: Nightly 2021-10-22 (with <code>rust-src</code>)</li>
+<li><strong>Linux</strong>: 5.8 with <code>CONFIG_BPF=y</code> and <code>CONFIG_BTF=y</code></li>
+<li><strong>GLIBC</strong>: 2.31+ (for user-space daemon)</li>
+</ul>
+<h3 id="upgrade-path">Upgrade Path <a href="#upgrade-path" class="heading-anchor" aria-label="Permalink to Upgrade Path">#</a></h3>
+<div class="code-block-container" data-lang="CODE">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">CODE</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code>0.3 -&gt; 0.4: BTF metadata changes
+0.4 -&gt; 0.5: Map API improvements
+0.5 -&gt; 0.6: New BPF helpers, performance
+</code></pre>
+</div>
+<p>Always test with <code>cargo build --release</code> after version bump.</p>
+<h2 id="related-documentation">Related Documentation <a href="#related-documentation" class="heading-anchor" aria-label="Permalink to Related Documentation">#</a></h2>
+<ul>
+<li><a href="ebpf-internals.html">eBPF Internals &amp; Bytecode</a> — Under-the-hood bytecode execution, ELF layout, and verifier requirements.</li>
+<li><a href="ghostring-user-daemon.html">ghostring User Daemon</a> — Application of Aya and <code>aya-poll</code> within the Tokio async user daemon.</li>
+<li><a href="perf-buffer-internals.html">Perf Buffer Internals</a> — Memory layouts and polling mechanics for <code>PerfEventArray</code> maps.</li>
+<li><a href="btf-co-re-deep-dive.html">BTF &amp; CO-RE Deep Dive</a> — How Aya parses BTF metadata to perform CO-RE field relocations.</li>
+<li><a href="build-system-workspace.html">Build System &amp; Workspace</a> — Multi-crate Cargo setup and <code>bpf-linker</code> build integration.</li>
+<li><a href="license-compliance-deep.html">License Compliance Deep Dive</a> — Aya helper licensing restrictions and GPLv3 verification.</li>
+<li><a href="troubleshooting-guide.html">Troubleshooting Guide</a> — Resolving Aya map loading, polling, and verifier rejection errors.</li>
+</ul>
+        </article>
+
+        <div class="doc-pagination">
+
+      <a href="ebpf-internals.html" class="pagination-card prev-card">
+        <span class="pagination-label">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          Previous
+        </span>
+        <span class="pagination-title">eBPF Internals and Bytecode Analysis for GhostRing</span>
+      </a>
+
+      <a href="btf-co-re-deep-dive.html" class="pagination-card next-card">
+        <span class="pagination-label">
+          Next
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </span>
+        <span class="pagination-title">BTF &amp; CO-RE Deep Dive</span>
+      </a>
+</div>
+
+        <footer class="docs-footer">
+          <div class="footer-left">
+            <span>GhostRing eBPF Security Subsystem • Licensed under GPLv3</span>
+          </div>
+          <div class="footer-right">
+            <a href="#top" class="back-to-top-btn">Back to top ↑</a>
+          </div>
+        </footer>
+      </div>
+    </main>
+
+    <!-- Right "On This Page" Sidebar -->
+    <aside class="docs-toc-aside">
+      <div class="toc-sticky-container">
+        <div class="toc-heading">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+          <span>On this page</span>
+        </div>
+        <ul class="toc-list">
+
+      <li class="toc-item toc-item-h2">
+        <a href="#aya-crate-architecture" class="toc-link" data-heading="aya-crate-architecture">Aya Crate Architecture</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#core-crates-in-aya-ecosystem" class="toc-link" data-heading="core-crates-in-aya-ecosystem">Core Crates in Aya Ecosystem</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#elf-loading-and-linking" class="toc-link" data-heading="elf-loading-and-linking">ELF Loading and Linking</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#bpf-linker-integration" class="toc-link" data-heading="bpf-linker-integration">bpf-linker Integration</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#cargo-configuration" class="toc-link" data-heading="cargo-configuration">Cargo Configuration</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#build-pipeline" class="toc-link" data-heading="build-pipeline">Build Pipeline</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#map-abstractions" class="toc-link" data-heading="map-abstractions">Map Abstractions</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#perfeventarray-map-wrapper" class="toc-link" data-heading="perfeventarray-map-wrapper">PerfEventArray Map Wrapper</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#hash-map-type-for-future-roadmap" class="toc-link" data-heading="hash-map-type-for-future-roadmap">Hash Map Type (For Future Roadmap)</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#bpf-helper-bindings" class="toc-link" data-heading="bpf-helper-bindings">BPF Helper Bindings</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#aya-wrapped-helpers" class="toc-link" data-heading="aya-wrapped-helpers">Aya-Wrapped Helpers</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#common-helpers-used-by-ghostring" class="toc-link" data-heading="common-helpers-used-by-ghostring">Common Helpers Used by GhostRing</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#helper-licensing-table" class="toc-link" data-heading="helper-licensing-table">Helper Licensing Table</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#async-polling-model" class="toc-link" data-heading="async-polling-model">Async Polling Model</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#aya-poll-integration" class="toc-link" data-heading="aya-poll-integration">Aya-Poll Integration</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#polling-interval-configuration" class="toc-link" data-heading="polling-interval-configuration">Polling Interval Configuration</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#backpressure-handling" class="toc-link" data-heading="backpressure-handling">Backpressure Handling</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#error-handling-and-recovery" class="toc-link" data-heading="error-handling-and-recovery">Error Handling and Recovery</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#common-error-types" class="toc-link" data-heading="common-error-types">Common Error Types</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#recovery-strategies" class="toc-link" data-heading="recovery-strategies">Recovery Strategies</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#debugging-and-introspection" class="toc-link" data-heading="debugging-and-introspection">Debugging and Introspection</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#aya-debug-features" class="toc-link" data-heading="aya-debug-features">Aya Debug Features</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#kernel-logging" class="toc-link" data-heading="kernel-logging">Kernel Logging</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#aya-inspect-metrics-export" class="toc-link" data-heading="aya-inspect-metrics-export">Aya Inspect (Metrics Export)</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#version-compatibility" class="toc-link" data-heading="version-compatibility">Version Compatibility</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#aya-version-matrix" class="toc-link" data-heading="aya-version-matrix">Aya Version Matrix</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#minimum-supported-versions" class="toc-link" data-heading="minimum-supported-versions">Minimum Supported Versions</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#upgrade-path" class="toc-link" data-heading="upgrade-path">Upgrade Path</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#related-documentation" class="toc-link" data-heading="related-documentation">Related Documentation</a>
+      </li>
+</ul>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Interactive Search Modal -->
+  <div id="search-modal" class="search-modal" aria-hidden="true" role="dialog">
+    <div class="search-modal-backdrop"></div>
+    <div class="search-modal-box">
+      <div class="search-input-wrapper">
+        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="search-input" class="search-input" placeholder="Search documentation, topics, APIs, CLI flags..." autocomplete="off">
+        <button id="search-clear-btn" class="search-clear-btn" aria-label="Clear query">&times;</button>
+      </div>
+      <div id="search-results" class="search-results">
+        <div class="search-initial-state">Type a keyword to search docs...</div>
+      </div>
+      <div class="search-modal-footer">
+        <span class="search-hint"><kbd>↑</kbd><kbd>↓</kbd> to navigate</span>
+        <span class="search-hint"><kbd>Enter</kbd> to select</span>
+        <span class="search-hint"><kbd>Esc</kbd> to close</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/search-index.js"></script>
+  <script src="assets/docs.js"></script>
+</body>
+</html>

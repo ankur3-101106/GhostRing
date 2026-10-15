@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GhostRing Security Model Deep Dive | GhostRing Documentation</title>
+  <meta name="description" content="Threat model, evasion countermeasures, kernel rootkit resistance, and defense-in-depth principles. - GhostRing Ring 0 eBPF Telemetry Engine">
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+  <link rel="stylesheet" href="assets/docs.css">
+  <script>
+    (function() {
+      const stored = localStorage.getItem('ghostring_docs_theme');
+      if (stored) {
+        document.documentElement.setAttribute('data-theme', stored);
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+</head>
+<body class="docs-body">
+
+  <!-- Top Navigation Bar -->
+  <header class="top-nav">
+    <div class="top-nav-inner">
+      <div class="nav-left">
+        <button id="mobile-sidebar-toggle" class="nav-icon-btn mobile-only" aria-label="Open Sidebar Menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+        <a href="index.html" class="brand-link">
+          <img src="assets/logo.svg" alt="GhostRing Logo" class="brand-logo" width="32" height="32">
+          <div class="brand-info">
+            <span class="brand-name">GhostRing</span>
+            <span class="brand-tag">Ring 0 Telemetry</span>
+          </div>
+        </a>
+        <span class="version-pill">v0.1.0</span>
+      </div>
+
+      <div class="nav-center">
+        <button id="search-trigger-btn" class="search-trigger" type="button" aria-label="Search documentation">
+          <svg class="search-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <span class="search-placeholder">Search documentation...</span>
+          <span class="search-shortcut"><kbd>Ctrl</kbd><kbd>K</kbd></span>
+        </button>
+      </div>
+
+      <div class="nav-right">
+        <button id="theme-toggle" class="nav-icon-btn" type="button" aria-label="Toggle light/dark theme" title="Toggle theme">
+          <svg class="theme-icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+          <svg class="theme-icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        </button>
+        <a href="https://github.com/ankur/ghostring" target="_blank" rel="noopener noreferrer" class="nav-icon-btn github-btn" aria-label="GitHub Repository" title="GitHub">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"></path></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Documentation Container -->
+  <div class="docs-layout">
+    
+    <!-- Left Navigation Sidebar -->
+    <aside id="docs-sidebar" class="docs-sidebar">
+      <div class="sidebar-scroller">
+        <nav class="sidebar-nav" aria-label="Main Navigation">
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">Documentation Suite</div>
+      <ul class="sidebar-links">
+        <li>
+          <a href="index.html" class="sidebar-link">
+            <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            <span>Documentation Hub</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">01</span>
+        <span class="group-title">Foundational Architecture & Environment</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="architecture-overview.html" class="sidebar-link" title="Architecture Overview">
+            <span class="link-bullet"></span>
+            <span class="link-text">Architecture Overview</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="development-environment.html" class="sidebar-link" title="Development Environment">
+            <span class="link-bullet"></span>
+            <span class="link-text">Development Environment</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ebpf-fundamentals.html" class="sidebar-link" title="eBPF Fundamentals">
+            <span class="link-bullet"></span>
+            <span class="link-text">eBPF Fundamentals</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="kernel-instrumentation.html" class="sidebar-link" title="Kernel Instrumentation">
+            <span class="link-bullet"></span>
+            <span class="link-text">Kernel Instrumentation</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">02</span>
+        <span class="group-title">Kernel Space & eBPF Engineering</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="ebpf-internals.html" class="sidebar-link" title="eBPF Internals &amp; Bytecode">
+            <span class="link-bullet"></span>
+            <span class="link-text">eBPF Internals &amp; Bytecode</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="aya-framework.html" class="sidebar-link" title="Aya Framework">
+            <span class="link-bullet"></span>
+            <span class="link-text">Aya Framework</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="btf-co-re-deep-dive.html" class="sidebar-link" title="BTF &amp; CO-RE Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">BTF &amp; CO-RE Deep Dive</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ghostring-common-structs.html" class="sidebar-link" title="ghostring-common Structs">
+            <span class="link-bullet"></span>
+            <span class="link-text">ghostring-common Structs</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">03</span>
+        <span class="group-title">Telemetry & User Space Pipeline</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="event-transport.html" class="sidebar-link" title="Event Transport">
+            <span class="link-bullet"></span>
+            <span class="link-text">Event Transport</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="perf-buffer-internals.html" class="sidebar-link" title="Perf Buffer Internals">
+            <span class="link-bullet"></span>
+            <span class="link-text">Perf Buffer Internals</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ghostring-user-daemon.html" class="sidebar-link" title="ghostring User Daemon">
+            <span class="link-bullet"></span>
+            <span class="link-text">ghostring User Daemon</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">04</span>
+        <span class="group-title">Security, Compliance & Governance</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="security-requirements.html" class="sidebar-link" title="Security Requirements">
+            <span class="link-bullet"></span>
+            <span class="link-text">Security Requirements</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="security-model-deep-dive.html" class="sidebar-link active" title="Security Model Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">Security Model Deep Dive</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="license-compliance-deep.html" class="sidebar-link" title="License Compliance Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">License Compliance Deep Dive</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">05</span>
+        <span class="group-title">Quality Assurance, Operations & Roadmap</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="build-system-workspace.html" class="sidebar-link" title="Build System &amp; Workspace">
+            <span class="link-bullet"></span>
+            <span class="link-text">Build System &amp; Workspace</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="testing-strategy.html" class="sidebar-link" title="Testing Strategy">
+            <span class="link-bullet"></span>
+            <span class="link-text">Testing Strategy</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="troubleshooting-guide.html" class="sidebar-link" title="Troubleshooting Guide">
+            <span class="link-bullet"></span>
+            <span class="link-text">Troubleshooting Guide</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="roadmap-features-deep.html" class="sidebar-link" title="Roadmap Features Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">Roadmap Features Deep Dive</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+</nav>
+      </div>
+    </aside>
+    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+    <!-- Center Content Article -->
+    <main class="docs-main">
+      <div class="content-wrapper">
+        
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <a href="index.html" class="crumb-link">Docs</a>
+      <span class="crumb-sep">/</span>
+      <span class="crumb-cat">Security, Compliance &amp; Governance</span>
+      <span class="crumb-sep">/</span>
+      <span class="crumb-active">GhostRing Security Model Deep Dive</span>
+    </nav>
+    
+        
+        <article class="markdown-body">
+          <h1 id="ghostring-security-model-deep-dive">GhostRing Security Model Deep Dive <a href="#ghostring-security-model-deep-dive" class="heading-anchor" aria-label="Permalink to GhostRing Security Model Deep Dive">#</a></h1>
+<h2 id="threat-model-and-attack-surface">Threat Model and Attack Surface <a href="#threat-model-and-attack-surface" class="heading-anchor" aria-label="Permalink to Threat Model and Attack Surface">#</a></h2>
+<h3 id="core-threat-assumptions">Core Threat Assumptions <a href="#core-threat-assumptions" class="heading-anchor" aria-label="Permalink to Core Threat Assumptions">#</a></h3>
+<p>GhostRing's security model is built on these fundamental assumptions:</p>
+<ol>
+<li>
+<p><strong>Kernel is partially trusted</strong>: The Linux kernel executes eBPF programs verified for safety, but kernel bugs or compromised components can leak information.</p>
+</li>
+<li>
+<p><strong>User space is untrusted</strong>: Any user-space process can be malicious, can hook system APIs, can modify <code>/proc</code> entries, and can attempt to detect/evasion monitoring.</p>
+</li>
+<li>
+<p><strong>Adversary goals</strong>: Hide processes, conceal network connections, modify file access patterns, exfiltrate data without detection.</p>
+</li>
+<li>
+<p><strong>Attack vectors</strong>: 
+   - API hooking via <code>LD_PRELOAD</code> or inline hooks
+   - <code>/proc</code> filesystem modification
+   - System call filtering/alteration
+   - Kernel module unloading/replacement
+   - Process hiding (concealing from <code>/proc/pid/</code>, <code>ps</code>, etc.)</p>
+</li>
+</ol>
+<h3 id="how-ghostring-hardens-the-model">How GhostRing Hardens the Model <a href="#how-ghostring-hardens-the-model" class="heading-anchor" aria-label="Permalink to How GhostRing Hardens the Model">#</a></h3>
+<h4 id="1-kernel-space-instrumentation">1. Kernel-Space Instrumentation <a href="#1-kernel-space-instrumentation" class="heading-anchor" aria-label="Permalink to 1. Kernel-Space Instrumentation">#</a></h4>
+<p>By operating at <strong>Ring 0</strong> via eBPF:</p>
+<div class="code-block-container" data-lang="CODE">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">CODE</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code>┌──────────────────────────────────────────────────────────────┐
+│                       Threat Mitigation                      │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  User-Space Agent (Traditional)                              │ │
+│  │                                                          │ │ │
+│  │  - Hooks system APIs (hooked by malware)                 │ │ │
+│  │  - Polls /proc filesystem (modifiable by rootkit)        │ │ │
+│  │  - Can be detected/evasion&#39;d                             │ │ │
+│  │  - Context-switch overhead                               │ │ │
+│  └───────────────┬───────────────────────┬──────────────────┘ │ │
+│                  │                       │                      │ │ │
+│  └───────────────┴───────────────────────┴──────────────────┘ │ │
+│                                                              │ │ │
+│  GhostRing (Kernel eBPF)                                     │ │ │
+│  │                                                          │ │ │
+│  │  - Intercepts syscalls directly in kernel path           │ │ │
+│  │  - eBPF verifier guarantees program safety              │ │ │
+│  │  - Invisible to user-space tampering                     │ │ │
+│  │  - No context-switching for each event                   │ │ │
+│  └──────────────────────────────────────────────────────────────┘ │ │
+└────────────────────────────────────────────────────────────────┘
+</code></pre>
+</div>
+<p><strong>Key advantages</strong>:
+- <strong>No user-space hooks to bypass</strong>: eBPF programs fire before user-space execution
+- <strong>Invisible to rootkits</strong>: Kernel-mode monitoring cannot be easily unhooked from user space
+- <strong>Process-hiding resistant</strong>: Syscalls intercepted before process structures are visible in <code>/proc</code>
+- <strong>Zero context-switch overhead</strong>: Events collected in-kernel, pumped via ring buffer</p>
+<h4 id="2-gplv3-licensing-enforcement">2. GPLv3 Licensing Enforcement <a href="#2-gplv3-licensing-enforcement" class="heading-anchor" aria-label="Permalink to 2. GPLv3 Licensing Enforcement">#</a></h4>
+<p>The Linux kernel eBPF verifier checks the <code>__license</code> section during program loading:</p>
+<div class="code-block-container" data-lang="CODE">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">CODE</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code>┌──────────────────────────────────────────────────────────────┐
+│  License Verification Flow                                     │
+├──────────────────────────────────────────────────────────────┤
+│                                                                │
+│  1. eBPF program loads into kernel                             │
+│  2. Verifier reads __license section                           │
+│  3. If license ≠ &quot;GPLv3&quot; (or &quot;GPL&quot;):                          │
+│     - Advanced helpers restricted                              │
+│     - Verifier error: &quot;license check failed&quot;                   │
+│     - Program may be rejected or limited                       │
+│  4. If license = &quot;GPLv3&quot;:                                     │
+│     - Full helper access granted                               │
+│     - Program loads successfully                               │
+│  5. GPL-compatible locks are enforced at load time             │
+│                                                                │
+├──────────────────────────────────────────────────────────────┤
+│  License: &quot;GPLv3&quot; → 100% helper access                         │
+│  License: &quot;GPL&quot; → 100% helper access (legacy)                 │
+│  License: &quot;MIT/BSD/proprietary&quot; → Restricted helpers only    │
+│  License: None → Load denied                                   │
+└────────────────────────────────────────────────────────────────┘
+</code></pre>
+</div>
+<p><strong>Critical implications</strong>:</p>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>License</th>
+<th>Helper Access</th>
+<th>Binary Compatibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GPLv3</code></td>
+<td>All helpers including <code>bpf_probe_read_user_str</code></td>
+<td>Full (recommended)</td>
+</tr>
+<tr>
+<td><code>GPL</code> (v2)</td>
+<td>All helpers</td>
+<td>Full (legacy)</td>
+</tr>
+<tr>
+<td><code>MIT/BSD/ASL</code></td>
+<td>Restricted (no deep memory read)</td>
+<td>Limited</td>
+</tr>
+<tr>
+<td><code>Proprietary</code></td>
+<td>None (verifier rejects)</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>None/</code>empty</td>
+<td>None (load denied)</td>
+<td>None</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>GhostRing enforcement</strong>:</p>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// build.rs - license section (CRITICAL)</span>
+<span class="fm">println!</span><span class="p">(</span><span class="s">&quot;cargo:rustc-link-arg-bpf=--license=GPLv3&quot;</span><span class="p">);</span>
+</code></pre>
+</div>
+<p>Without this, the kernel verifier will either:
+- Restrict to "GPL-friendly" helpers only
+- Reject the program entirely
+- Generate verification errors</p>
+<h4 id="3-ebpf-verifier-guarantees">3. eBPF Verifier Guarantees <a href="#3-ebpf-verifier-guarantees" class="heading-anchor" aria-label="Permalink to 3. eBPF Verifier Guarantees">#</a></h4>
+<p>The kernel verifier provides these safety properties:</p>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Guarantee</th>
+<th>Description</th>
+<th>Security Impact</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Memory safety</strong></td>
+<td>No out-of-bounds accesses, no buffer overflows</td>
+<td>Prevents kernel crashes from eBPF programs</td>
+</tr>
+<tr>
+<td><strong>Loop termination</strong></td>
+<td>Verified no infinite loops</td>
+<td>Denial-of-service prevention</td>
+</tr>
+<tr>
+<td><strong>Bounds checking</strong></td>
+<td>All memory access verified against limits</td>
+<td>Protects kernel data structures</td>
+</tr>
+<tr>
+<td><strong>Helper licensing</strong></td>
+<td>GPLv3 check enforced</td>
+<td>Ensures compatible licensing</td>
+</tr>
+<tr>
+<td><strong>Register state limits</strong></td>
+<td>Fixed register ranges, stack depth</td>
+<td>Prevents state corruption</td>
+</tr>
+<tr>
+<td><strong>Type safety</strong></td>
+<td>BTF-verified struct access</td>
+<td>Prevents misinterpretation of data</td>
+</tr>
+</tbody>
+</table></div>
+<h4 id="4-attack-surface-reduction">4. Attack Surface Reduction <a href="#4-attack-surface-reduction" class="heading-anchor" aria-label="Permalink to 4. Attack Surface Reduction">#</a></h4>
+<h5 id="what-ghostring-does-not-defend-against">What GhostRing Does NOT Defend Against <a href="#what-ghostring-does-not-defend-against" class="heading-anchor" aria-label="Permalink to What GhostRing Does NOT Defend Against">#</a></h5>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Threat</th>
+<th>Why Not</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Kernel zero-days</strong></td>
+<td>eBPF runs in kernel; bugs in programs can crash kernel</td>
+<td>Defense-in-depth; careful program verification</td>
+</tr>
+<tr>
+<td><strong>Physical access</strong></td>
+<td>Attacker with root can disable eBPF</td>
+<td>Hardware-level security required</td>
+</tr>
+<tr>
+<td><strong>Supply chain</strong></td>
+<td>Compiled binary could be tampered</td>
+<td>Verify signatures; reproducible builds</td>
+</tr>
+<tr>
+<td><strong>Kernel config changes</strong></td>
+<td>Disabling BTF breaks CO-RE</td>
+<td>Document requirements; enforce prerequisites</td>
+</tr>
+<tr>
+<td><strong>User-space compromise</strong></td>
+<td>If user-space daemon rootkit'd</td>
+<td>Kernel portion still functional (separation of concerns)</td>
+</tr>
+</tbody>
+</table></div>
+<h5 id="what-ghostring-does-defend-against">What GhostRing DOES Defend Against <a href="#what-ghostring-does-defend-against" class="heading-anchor" aria-label="Permalink to What GhostRing DOES Defend Against">#</a></h5>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Threat</th>
+<th>Defense</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>LD_PRELOAD hooking</strong></td>
+<td>eBPF intercepts syscalls before user-space library loading</td>
+</tr>
+<tr>
+<td><strong>/proc modification</strong></td>
+<td>Data comes from kernel directly, not filesystem</td>
+</tr>
+<tr>
+<td><strong>System call filtering</strong></td>
+<td>Direct kernel path interception</td>
+</tr>
+<tr>
+<td><strong>Process hiding from ps</strong></td>
+<td>PID/uid captured at syscall entry, before process structures visible</td>
+</tr>
+<tr>
+<td><strong>Inline syscall hooks</strong></td>
+<td>eBPF runs before inline hooks in most cases</td>
+</tr>
+<tr>
+<td><strong>/sys/class/memory manipulation</strong></td>
+<td>Direct kernel instrumentation</td>
+</tr>
+<tr>
+<td><strong>Dynamic library preloading</strong></td>
+<td>Kernel path bypasses user-space libraries entirely</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="defense-in-depth-architecture">Defense-in-Depth Architecture <a href="#defense-in-depth-architecture" class="heading-anchor" aria-label="Permalink to Defense-in-Depth Architecture">#</a></h3>
+<div class="code-block-container" data-lang="CODE">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">CODE</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code>┌──────────────────────────────────────────────────────────────┐
+│                GhostRing Defense-in-Depth Layer              │
+├──────────────────────────────────────────────────────────────┤
+│                                                               │
+│  Layer 4: Application Level                                  │ │
+│  - JSON export for SIEM                                      │ │
+│  - Alert routing                                             │ │
+│  - Audit logging                                             │ │
+│  - CLI monitoring                                            │ │
+│                                                               │
+│  Layer 3: User-Space Daemon                                  │ │
+│  - Tokio async event loop                                    │ │
+│  - Ring buffer polling                                       │ │
+│  - CLi arguments, configuration                              │ │
+│  - Metrics export                                            │ │
+│                                                               │
+│  Layer 2: eBPF Kernel Programs                               │ │
+│  - Tracepoint/kprobe attachments                             │ │
+│  - Structured event emission                                 │ │
+│  - GPLv3-licensed helpers                                    │ │
+│  - Verifier-checked bytecode                                 │ │
+│                                                               │
+│  Layer 1: Kernel Hardening                                   │ │
+│  - eBPF verifier static analysis                             │ │
+│  - License enforcement (GPLv3)                               │ │
+│  - BTF/CO-RE for portability                                 │ │
+│  - Memory safety guarantees                                  │ │
+│                                                               │
+├──────────────────────────────────────────────────────────────┤
+│              Attacker Must Penetrate ALL Layers              │
+├──────────────────────────────────────────────────────────────┤
+│  Realistic: Adversary must compromise kernel + user space    │
+│  Ideal: eBPF layer provides isolation invisible to malware   │
+└────────────────────────────────────────────────────────────────┘
+</code></pre>
+</div>
+<h3 id="security-requirements-checklist">Security Requirements Checklist <a href="#security-requirements-checklist" class="heading-anchor" aria-label="Permalink to Security Requirements Checklist">#</a></h3>
+<h4 id="pre-deployment-validation">Pre-Deployment Validation <a href="#pre-deployment-validation" class="heading-anchor" aria-label="Permalink to Pre-Deployment Validation">#</a></h4>
+<div class="code-block-container" data-lang="BASH">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">BASH</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># Security validation checklist before deploying GhostRing</span>
+
+<span class="c1"># 1. License compliance</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;=== License Check ===&quot;</span>
+grep<span class="w"> </span>-r<span class="w"> </span><span class="s2">&quot;GPLv3&quot;</span><span class="w"> </span>/path/to/ghostring-ebpf/build.rs
+<span class="c1"># Must output: println!(&quot;cargo:rustc-link-arg-bpf=--license=GPLv3&quot;)</span>
+
+<span class="c1"># 2. BTF availability</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;=== BTF Check ===&quot;</span>
+ls<span class="w"> </span>-la<span class="w"> </span>/sys/kernel/btf/vmlinux
+<span class="c1"># Must exist and be readable</span>
+
+<span class="c1"># 3. Kernel version</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;=== Kernel Version ===&quot;</span>
+uname<span class="w"> </span>-r
+<span class="c1"># Must be 5.8+</span>
+
+<span class="c1"># 4. Rust toolchain</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;=== Toolchain Check ===&quot;</span>
+rustup<span class="w"> </span>show
+<span class="c1"># Must be nightly with rust-src</span>
+
+<span class="c1"># 5. bpf-linker installed</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;=== bpf-linker Check ===&quot;</span>
+bpf-linker<span class="w"> </span>--version
+<span class="c1"># Should display version number</span>
+
+<span class="c1"># 6. eBPF program load test</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;=== Load Test ===&quot;</span>
+sudo<span class="w"> </span>-E<span class="w"> </span>cargo<span class="w"> </span>run<span class="w"> </span>--release<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-20
+<span class="c1"># Should show daemon starting without license errors</span>
+
+<span class="c1"># 7. Permission checks</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;=== Permissions ===&quot;</span>
+id
+<span class="c1"># Must show uid 0 (root) or have CAP_SYS_ADMIN</span>
+
+<span class="c1"># 8. Map permissions</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;=== Map Check ===&quot;</span>
+sudo<span class="w"> </span>bpftool<span class="w"> </span>map<span class="w"> </span>show
+<span class="c1"># Should show ghostring maps</span>
+
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;=== All Checks Passed ===&quot;</span>
+</code></pre>
+</div>
+<h4 id="runtime-security-monitoring">Runtime Security Monitoring <a href="#runtime-security-monitoring" class="heading-anchor" aria-label="Permalink to Runtime Security Monitoring">#</a></h4>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// Runtime security checks in the daemon</span>
+
+<span class="k">fn</span><span class="w"> </span><span class="nf">runtime_security_checks</span><span class="p">()</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nb">Result</span><span class="o">&lt;</span><span class="p">(),</span><span class="w"> </span><span class="n">SecurityError</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Check 1: eBPF program still loaded</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">!</span><span class="n">is_ebpf_loaded</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nb">Err</span><span class="p">(</span><span class="n">SecurityError</span><span class="p">::</span><span class="n">EbpfNotLoaded</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Check 2: Ring buffers healthy</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="n">ring_buffers_full</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">log</span><span class="p">::</span><span class="n">warn</span><span class="o">!</span><span class="p">(</span><span class="s">&quot;Ring buffers approaching capacity&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Check 3: No verifier errors</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="n">has_verifier_errors</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">log</span><span class="p">::</span><span class="n">error</span><span class="o">!</span><span class="p">(</span><span class="s">&quot;eBPF verifier errors detected&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Check 4: CPU online</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">!</span><span class="n">all_cpus_online</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">log</span><span class="p">::</span><span class="n">warn</span><span class="o">!</span><span class="p">(</span><span class="s">&quot;Some CPUs offline, event coverage reduced&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Check 5: No suspicious configuration</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="n">suspicious_config_detected</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">log</span><span class="p">::</span><span class="n">warn</span><span class="o">!</span><span class="p">(</span><span class="s">&quot;Potentially suspicious configuration&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nb">Ok</span><span class="p">(())</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h3 id="security-focused-development-practices">Security-Focused Development Practices <a href="#security-focused-development-practices" class="heading-anchor" aria-label="Permalink to Security-Focused Development Practices">#</a></h3>
+<h4 id="code-review-requirements">Code Review Requirements <a href="#code-review-requirements" class="heading-anchor" aria-label="Permalink to Code Review Requirements">#</a></h4>
+<p>All changes to <code>ghostring-ebpf</code> must pass:</p>
+<ol>
+<li><strong>Verifier compatibility</strong>: eBPF program passes static verification</li>
+<li><strong>License compliance</strong>: <code>__license</code> section remains <code>GPLv3</code></li>
+<li><strong>BTF compatibility</strong>: Struct offsets remain valid (or CO-RE enabled)</li>
+<li><strong>Minimal unsafe</strong>: Only FFI boundaries marked <code>unsafe</code></li>
+<li><strong>No std in eBPF</strong>: <code>no_std</code> constraint maintained</li>
+<li><strong>Hardware compatibility</strong>: Works on target kernel versions</li>
+</ol>
+<h4 id="testing-requirements">Testing Requirements <a href="#testing-requirements" class="heading-anchor" aria-label="Permalink to Testing Requirements">#</a></h4>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Test Type</th>
+<th>Scope</th>
+<th>Automation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Unit tests</strong></td>
+<td><code>ghostring-common</code> struct layout, sizes</td>
+<td><code>cargo test -p ghostring-common</code></td>
+</tr>
+<tr>
+<td><strong>Integration tests</strong></td>
+<td>eBPF program loads, attaches</td>
+<td><code>cargo test -p ghostring-ebpf</code> (if CI has kernel)</td>
+</tr>
+<tr>
+<td><strong>Verifier checks</strong></td>
+<td>Compile with <code>--check</code></td>
+<td><code>cargo build --release</code> exit code</td>
+</tr>
+<tr>
+<td><strong>Runtime tests</strong></td>
+<td>Events appear in daemon output</td>
+<td>Manual (requires kernel + sudo)</td>
+</tr>
+<tr>
+<td><strong>Fuzz testing</strong></td>
+<td>eBPF bytecode edge cases</td>
+<td><code>cargo fuzz</code> (if set up)</td>
+</tr>
+<tr>
+<td><strong>CI/CD gates</strong></td>
+<td>Build, test, verify on every PR</td>
+<td>GitHub Actions</td>
+</tr>
+</tbody>
+</table></div>
+<h4 id="audit-and-compliance">Audit and Compliance <a href="#audit-and-compliance" class="heading-anchor" aria-label="Permalink to Audit and Compliance">#</a></h4>
+<div class="code-block-container" data-lang="CODE">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">CODE</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code>┌──────────────────────────────────────────────────────────────┐
+│               GhostRing Audit Trail                         │
+├──────────────────────────────────────────────────────────────┤
+│                                                               │
+│  1. Build provenance                                        │ │
+│     - `cargo build -- --verify` output saved                 │ │
+│     - `bpf-linker` version recorded                         │ │
+│     - Source commit hash in build artifacts                 │ │
+│                                                               │
+│  2. Runtime metrics                                         │ │
+│     - Events processed per session                          │ │
+│     - Events dropped (buffer full)                          │ │
+│     - Verifier warnings/errors count                        │ │
+│     - CPU utilization metrics                               │ │
+│                                                               │
+│  3. License compliance                                      │ │
+│     - `__license` section verified at each build            │ │
+│     - GPLv3 adherence documented                            │ │
+│     - License file (LICENSE) reviewed periodically          │ │
+│                                                               │
+│  3. Security incidents                                      │ │
+│     - Unusual event patterns logged                         │ │
+│     - Buffer overflow incidents recorded                    │ │
+│     - Response actions taken                                │ │
+│                                                               │
+│  4. Version tracking                                        │ │
+│     - Semantic version of each crate                        │ │
+│     - Change log maintained                                 │ │
+│     - Breaking changes documented                           │ │
+│                                                               │
+└────────────────────────────────────────────────────────────────┘
+</code></pre>
+</div>
+<h3 id="compliance-and-licensing-details">Compliance and Licensing Details <a href="#compliance-and-licensing-details" class="heading-anchor" aria-label="Permalink to Compliance and Licensing Details">#</a></h3>
+<h4 id="gplv3-section-5-conveying-modified-source-versions">GPLv3 Section 5 (Conveying Modified Source Versions) <a href="#gplv3-section-5-conveying-modified-source-versions" class="heading-anchor" aria-label="Permalink to GPLv3 Section 5 (Conveying Modified Source Versions)">#</a></h4>
+<p>When modifying GhostRing:</p>
+<div class="code-block-container" data-lang="TEXT">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">TEXT</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code>You must cause the modified files to carry prominent notices
+that you changed them, and must carry the relevant date.
+
+You must license the entire work under this License to anyone
+who comes into possession of a copy.
+
+You must not impose further restrictions on the exercise of
+the rights granted or affirmed under this License.
+</code></pre>
+</div>
+<h4 id="gplv3-section-6-conveying-non-source-forms">GPLv3 Section 6 (Conveying Non-Source Forms) <a href="#gplv3-section-6-conveying-non-source-forms" class="heading-anchor" aria-label="Permalink to GPLv3 Section 6 (Conveying Non-Source Forms)">#</a></h4>
+<p>For object code distribution:</p>
+<div class="code-block-container" data-lang="TEXT">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">TEXT</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code>You may convey a covered work in object code form under the
+terms of sections 4 and 5, provided that you also convey the
+machine-readable Corresponding Source under this License, in
+one of these ways:
+
+a) Convey the object code in, or embodied in, a physical product
+   (including a physical distribution medium), accompanied by the
+   Corresponding Source fixed on a durable physical medium
+   customarily used for software interchange.
+
+b) Convey the object code in, or embodied in, a physical product
+   accompanied by a written offer to provide the Corresponding
+   Source.
+
+c) Convey individual copies of the object code with a copy of
+   the written offer to provide the Corresponding Source.
+
+d) Convey the object code by offering access from a designated
+   place, and offer equivalent access to the Corresponding
+   Source in the same way through the same place at no further
+   charge.
+
+e) Convey the object code using peer-to-peer transmission, provided
+   you inform other peers where the object code and Corresponding
+   Source are being offered to the general public at no charge.
+</code></pre>
+</div>
+<h4 id="special-exception-for-ebpf">Special Exception for eBPF <a href="#special-exception-for-ebpf" class="heading-anchor" aria-label="Permalink to Special Exception for eBPF">#</a></h4>
+<blockquote>
+<p>The Linux kernel requires GPLv3 for full BPF helper access.
+This is a technical requirement, not a legal preference.
+Without GPLv3, programs can still function but with reduced
+capabilities (no <code>bpf_probe_read_user_str</code>, limited helpers).</p>
+</blockquote>
+<p><strong>Practical outcome</strong>: GhostRing must be GPLv3-licensed for full functionality. This is enforced by the kernel verifier at load time, not just by license terms.</p>
+<h3 id="threat-modeling-scenarios">Threat Modeling Scenarios <a href="#threat-modeling-scenarios" class="heading-anchor" aria-label="Permalink to Threat Modeling Scenarios">#</a></h3>
+<h4 id="scenario-1-rootkit-attempting-to-hide-processes">Scenario 1: Rootkit Attempting to Hide Processes <a href="#scenario-1-rootkit-attempting-to-hide-processes" class="heading-anchor" aria-label="Permalink to Scenario 1: Rootkit Attempting to Hide Processes">#</a></h4>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Attack Step</th>
+<th>GhostRing Response</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Rootkit hooks <code>sys_enter_execve</code> in kernel text</td>
+<td>eBPF tracepoint fires <strong>before</strong> inline hook (tracepoints are static)</td>
+</tr>
+<tr>
+<td>Rootkit modifies <code>/proc/pid/</code> entries</td>
+<td>GhostRing data comes from kernel registers, not <code>/proc</code></td>
+</tr>
+<tr>
+<td>Rootkit unloads GhostRing kernel module</td>
+<td>GhostRing is eBPF, not <code>.ko</code>; unloading requires <code>bpftool prog remove</code></td>
+</tr>
+<tr>
+<td>Rootkit hooks <code>read</code> syscall to conceal file access</td>
+<td>GhostRing captures events <strong>before</strong> hook point (at syscall entry)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Result</strong>: GhostRing provides visibility even against sophisticated rootkits.</p>
+<h4 id="scenario-2-malware-using-ld_preload-to-hide">Scenario 2: Malware Using LD_PRELOAD to Hide <a href="#scenario-2-malware-using-ld_preload-to-hide" class="heading-anchor" aria-label="Permalink to Scenario 2: Malware Using LD_PRELOAD to Hide">#</a></h4>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Attack Step</th>
+<th>GhostRing Response</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Malware <code>LD_PRELOAD</code>s library hooking <code>open</code>, <code>stat</code></td>
+<td>eBPF fires in kernel <strong>before</strong> user-library initialization</td>
+</tr>
+<tr>
+<td>Malware modifies <code>/etc/ld.so.preload</code></td>
+<td>GhostRing unaffected; kernel-side interception</td>
+</tr>
+<tr>
+<td>Malware patches system call table inline</td>
+<td>eBPF tracepoints/kprobes intercept before patched entry</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Result</strong>: GhostRing visibility persists across user-space compromise.</p>
+<h4 id="scenario-3-admin-attempts-to-disable-monitoring">Scenario 3: Admin Attempts to Disable Monitoring <a href="#scenario-3-admin-attempts-to-disable-monitoring" class="heading-anchor" aria-label="Permalink to Scenario 3: Admin Attempts to Disable Monitoring">#</a></h4>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Attempt</th>
+<th>Outcome</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>rmmod</code> eBPF program</td>
+<td>eBPF is not a loadable kernel module (.ko); requires <code>bpftool prog remove</code></td>
+</tr>
+<tr>
+<td>Kill the daemon process</td>
+<td>eBPF programs remain attached; events still collected (lost if no consumer)</td>
+</tr>
+<tr>
+<td>Modify kernel syscall table</td>
+<td>eBPF programs still attached to tracepoints/kprobes (different entry points)</td>
+</tr>
+<tr>
+<td>Disable BTF in kernel</td>
+<td>CO-RE breaks; programs may still work with hardcoded offsets (not recommended)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Result</strong>: eBPF-based monitoring is more resilient than traditional kernel modules.</p>
+<h4 id="scenario-4-data-exfiltration-concern">Scenario 4: Data Exfiltration Concern <a href="#scenario-4-data-exfiltration-concern" class="heading-anchor" aria-label="Permalink to Scenario 4: Data Exfiltration Concern">#</a></h4>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Events contain sensitive data (pids, uids, commands)</td>
+<td>Events are minimally structured; commands truncated to 16 bytes</td>
+</tr>
+<tr>
+<td>Ring buffer data captured by attacker</td>
+<td>Requires <code>CAP_SYS_ADMIN</code> to access <code>/sys/kernel/debug/tracing/</code></td>
+</tr>
+<tr>
+<td>JSON export contains sensitive fields</td>
+<td>Optional JSON export; omit sensitive fields or redact</td>
+</tr>
+<tr>
+<td>Long-term storage of telemetry</td>
+<td>Retention policies; encrypt storage; limit buffer sizes</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Result</strong>: Data minimization practices reduce exfiltration risk.</p>
+<h2 id="related-documentation">Related Documentation <a href="#related-documentation" class="heading-anchor" aria-label="Permalink to Related Documentation">#</a></h2>
+<ul>
+<li><a href="security-requirements.html">Security Requirements</a> — Fundamental security objectives, zero-trust telemetry, and verification requirements.</li>
+<li><a href="license-compliance-deep.html">License Compliance Deep Dive</a> — GPLv3 compliance requirements and BPF verifier security gates.</li>
+<li><a href="kernel-instrumentation.html">Kernel Instrumentation</a> — Tamper-resistant Ring 0 execution interception.</li>
+<li><a href="ebpf-fundamentals.html">eBPF Fundamentals</a> — Sandboxed kernel execution and static verifier guarantees.</li>
+<li><a href="architecture-overview.html">Architecture Overview</a> — Privilege boundaries and multi-crate security isolation.</li>
+<li><a href="roadmap-features-deep.html">Roadmap Features Deep Dive</a> — Extending threat detection to reverse shells and file tampering.</li>
+</ul>
+        </article>
+
+        <div class="doc-pagination">
+
+      <a href="security-requirements.html" class="pagination-card prev-card">
+        <span class="pagination-label">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          Previous
+        </span>
+        <span class="pagination-title">Security Requirements and Concerns for GhostRing</span>
+      </a>
+
+      <a href="license-compliance-deep.html" class="pagination-card next-card">
+        <span class="pagination-label">
+          Next
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </span>
+        <span class="pagination-title">License Compliance Deep Dive</span>
+      </a>
+</div>
+
+        <footer class="docs-footer">
+          <div class="footer-left">
+            <span>GhostRing eBPF Security Subsystem • Licensed under GPLv3</span>
+          </div>
+          <div class="footer-right">
+            <a href="#top" class="back-to-top-btn">Back to top ↑</a>
+          </div>
+        </footer>
+      </div>
+    </main>
+
+    <!-- Right "On This Page" Sidebar -->
+    <aside class="docs-toc-aside">
+      <div class="toc-sticky-container">
+        <div class="toc-heading">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+          <span>On this page</span>
+        </div>
+        <ul class="toc-list">
+
+      <li class="toc-item toc-item-h2">
+        <a href="#threat-model-and-attack-surface" class="toc-link" data-heading="threat-model-and-attack-surface">Threat Model and Attack Surface</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#core-threat-assumptions" class="toc-link" data-heading="core-threat-assumptions">Core Threat Assumptions</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#how-ghostring-hardens-the-model" class="toc-link" data-heading="how-ghostring-hardens-the-model">How GhostRing Hardens the Model</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#defense-in-depth-architecture" class="toc-link" data-heading="defense-in-depth-architecture">Defense-in-Depth Architecture</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#security-requirements-checklist" class="toc-link" data-heading="security-requirements-checklist">Security Requirements Checklist</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#security-focused-development-practices" class="toc-link" data-heading="security-focused-development-practices">Security-Focused Development Practices</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#compliance-and-licensing-details" class="toc-link" data-heading="compliance-and-licensing-details">Compliance and Licensing Details</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#threat-modeling-scenarios" class="toc-link" data-heading="threat-modeling-scenarios">Threat Modeling Scenarios</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#related-documentation" class="toc-link" data-heading="related-documentation">Related Documentation</a>
+      </li>
+</ul>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Interactive Search Modal -->
+  <div id="search-modal" class="search-modal" aria-hidden="true" role="dialog">
+    <div class="search-modal-backdrop"></div>
+    <div class="search-modal-box">
+      <div class="search-input-wrapper">
+        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="search-input" class="search-input" placeholder="Search documentation, topics, APIs, CLI flags..." autocomplete="off">
+        <button id="search-clear-btn" class="search-clear-btn" aria-label="Clear query">&times;</button>
+      </div>
+      <div id="search-results" class="search-results">
+        <div class="search-initial-state">Type a keyword to search docs...</div>
+      </div>
+      <div class="search-modal-footer">
+        <span class="search-hint"><kbd>↑</kbd><kbd>↓</kbd> to navigate</span>
+        <span class="search-hint"><kbd>Enter</kbd> to select</span>
+        <span class="search-hint"><kbd>Esc</kbd> to close</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/search-index.js"></script>
+  <script src="assets/docs.js"></script>
+</body>
+</html>

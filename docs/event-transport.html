@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Transport for GhostRing | GhostRing Documentation</title>
+  <meta name="description" content="Telemetry transmission mechanics from Ring 0 to user space via PerfEventArray ring buffers. - GhostRing Ring 0 eBPF Telemetry Engine">
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+  <link rel="stylesheet" href="assets/docs.css">
+  <script>
+    (function() {
+      const stored = localStorage.getItem('ghostring_docs_theme');
+      if (stored) {
+        document.documentElement.setAttribute('data-theme', stored);
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+</head>
+<body class="docs-body">
+
+  <!-- Top Navigation Bar -->
+  <header class="top-nav">
+    <div class="top-nav-inner">
+      <div class="nav-left">
+        <button id="mobile-sidebar-toggle" class="nav-icon-btn mobile-only" aria-label="Open Sidebar Menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+        <a href="index.html" class="brand-link">
+          <img src="assets/logo.svg" alt="GhostRing Logo" class="brand-logo" width="32" height="32">
+          <div class="brand-info">
+            <span class="brand-name">GhostRing</span>
+            <span class="brand-tag">Ring 0 Telemetry</span>
+          </div>
+        </a>
+        <span class="version-pill">v0.1.0</span>
+      </div>
+
+      <div class="nav-center">
+        <button id="search-trigger-btn" class="search-trigger" type="button" aria-label="Search documentation">
+          <svg class="search-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <span class="search-placeholder">Search documentation...</span>
+          <span class="search-shortcut"><kbd>Ctrl</kbd><kbd>K</kbd></span>
+        </button>
+      </div>
+
+      <div class="nav-right">
+        <button id="theme-toggle" class="nav-icon-btn" type="button" aria-label="Toggle light/dark theme" title="Toggle theme">
+          <svg class="theme-icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+          <svg class="theme-icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        </button>
+        <a href="https://github.com/ankur/ghostring" target="_blank" rel="noopener noreferrer" class="nav-icon-btn github-btn" aria-label="GitHub Repository" title="GitHub">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"></path></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Documentation Container -->
+  <div class="docs-layout">
+    
+    <!-- Left Navigation Sidebar -->
+    <aside id="docs-sidebar" class="docs-sidebar">
+      <div class="sidebar-scroller">
+        <nav class="sidebar-nav" aria-label="Main Navigation">
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">Documentation Suite</div>
+      <ul class="sidebar-links">
+        <li>
+          <a href="index.html" class="sidebar-link">
+            <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            <span>Documentation Hub</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">01</span>
+        <span class="group-title">Foundational Architecture & Environment</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="architecture-overview.html" class="sidebar-link" title="Architecture Overview">
+            <span class="link-bullet"></span>
+            <span class="link-text">Architecture Overview</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="development-environment.html" class="sidebar-link" title="Development Environment">
+            <span class="link-bullet"></span>
+            <span class="link-text">Development Environment</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ebpf-fundamentals.html" class="sidebar-link" title="eBPF Fundamentals">
+            <span class="link-bullet"></span>
+            <span class="link-text">eBPF Fundamentals</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="kernel-instrumentation.html" class="sidebar-link" title="Kernel Instrumentation">
+            <span class="link-bullet"></span>
+            <span class="link-text">Kernel Instrumentation</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">02</span>
+        <span class="group-title">Kernel Space & eBPF Engineering</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="ebpf-internals.html" class="sidebar-link" title="eBPF Internals &amp; Bytecode">
+            <span class="link-bullet"></span>
+            <span class="link-text">eBPF Internals &amp; Bytecode</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="aya-framework.html" class="sidebar-link" title="Aya Framework">
+            <span class="link-bullet"></span>
+            <span class="link-text">Aya Framework</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="btf-co-re-deep-dive.html" class="sidebar-link" title="BTF &amp; CO-RE Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">BTF &amp; CO-RE Deep Dive</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ghostring-common-structs.html" class="sidebar-link" title="ghostring-common Structs">
+            <span class="link-bullet"></span>
+            <span class="link-text">ghostring-common Structs</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">03</span>
+        <span class="group-title">Telemetry & User Space Pipeline</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="event-transport.html" class="sidebar-link active" title="Event Transport">
+            <span class="link-bullet"></span>
+            <span class="link-text">Event Transport</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="perf-buffer-internals.html" class="sidebar-link" title="Perf Buffer Internals">
+            <span class="link-bullet"></span>
+            <span class="link-text">Perf Buffer Internals</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ghostring-user-daemon.html" class="sidebar-link" title="ghostring User Daemon">
+            <span class="link-bullet"></span>
+            <span class="link-text">ghostring User Daemon</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">04</span>
+        <span class="group-title">Security, Compliance & Governance</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="security-requirements.html" class="sidebar-link" title="Security Requirements">
+            <span class="link-bullet"></span>
+            <span class="link-text">Security Requirements</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="security-model-deep-dive.html" class="sidebar-link" title="Security Model Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">Security Model Deep Dive</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="license-compliance-deep.html" class="sidebar-link" title="License Compliance Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">License Compliance Deep Dive</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">05</span>
+        <span class="group-title">Quality Assurance, Operations & Roadmap</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="build-system-workspace.html" class="sidebar-link" title="Build System &amp; Workspace">
+            <span class="link-bullet"></span>
+            <span class="link-text">Build System &amp; Workspace</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="testing-strategy.html" class="sidebar-link" title="Testing Strategy">
+            <span class="link-bullet"></span>
+            <span class="link-text">Testing Strategy</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="troubleshooting-guide.html" class="sidebar-link" title="Troubleshooting Guide">
+            <span class="link-bullet"></span>
+            <span class="link-text">Troubleshooting Guide</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="roadmap-features-deep.html" class="sidebar-link" title="Roadmap Features Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">Roadmap Features Deep Dive</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+</nav>
+      </div>
+    </aside>
+    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+    <!-- Center Content Article -->
+    <main class="docs-main">
+      <div class="content-wrapper">
+        
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <a href="index.html" class="crumb-link">Docs</a>
+      <span class="crumb-sep">/</span>
+      <span class="crumb-cat">Telemetry &amp; User Space Pipeline</span>
+      <span class="crumb-sep">/</span>
+      <span class="crumb-active">Event Transport for GhostRing</span>
+    </nav>
+    
+        
+        <article class="markdown-body">
+          <h1 id="event-transport-for-ghostring">Event Transport for GhostRing <a href="#event-transport-for-ghostring" class="heading-anchor" aria-label="Permalink to Event Transport for GhostRing">#</a></h1>
+<h2 id="telemetry-pipeline-overview">Telemetry Pipeline Overview <a href="#telemetry-pipeline-overview" class="heading-anchor" aria-label="Permalink to Telemetry Pipeline Overview">#</a></h2>
+<p>The GhostRing telemetry pipeline transports eBPF-collected events from kernel space to user space for ingestion, logging, and alert routing.</p>
+<h3 id="pipeline-stages">Pipeline Stages <a href="#pipeline-stages" class="heading-anchor" aria-label="Permalink to Pipeline Stages">#</a></h3>
+<ol>
+<li><strong>Trigger</strong>: Process initiates syscall (e.g., <code>sys_enter_execve</code>)</li>
+<li><strong>Execution</strong> (<code>ghostring-ebpf</code>): eBPF bytecode executes in kernel, extracts <code>pid</code>, <code>uid</code>, command metadata</li>
+<li><strong>Transmission</strong>: Serialized via <code>PerfEventArray</code> ring buffer map using <code>#[repr(C)]</code> structs</li>
+<li><strong>Ingestion</strong> (<code>ghostring</code>): Tokio daemon polls per-CPU ring buffers asynchronously</li>
+</ol>
+<h2 id="perfeventarray-ring-buffer-map">PerfEventArray Ring Buffer Map <a href="#perfeventarray-ring-buffer-map" class="heading-anchor" aria-label="Permalink to PerfEventArray Ring Buffer Map">#</a></h2>
+<h3 id="kernel-side-transmission">Kernel-Side Transmission <a href="#kernel-side-transmission" class="heading-anchor" aria-label="Permalink to Kernel-Side Transmission">#</a></h3>
+<ul>
+<li><strong>Map type</strong>: <code>PerfEventArray</code> (eBPF map type for perf event ring buffers)</li>
+<li><strong>Data format</strong>: <code>#[repr(C)]</code> structs for C-compatible layout</li>
+<li><strong>Per-CPU buffers</strong>: One ring buffer per CPU core</li>
+<li><strong>Serialization</strong>: Fixed-size structs pushed into ring buffer by eBPF program</li>
+</ul>
+<h3 id="user-side-ingestion">User-Side Ingestion <a href="#user-side-ingestion" class="heading-anchor" aria-label="Permalink to User-Side Ingestion">#</a></h3>
+<ul>
+<li><strong>Framework</strong>: <code>aya</code> crate with Tokio async support</li>
+<li><strong>Polling</strong>: Asynchronous polling of per-CPU ring buffers</li>
+<li><strong>Parsing</strong>: Raw byte streams parsed back into high-level Rust structs</li>
+<li><strong>Output</strong>: Logging, auditing, alert routing, JSON export (planned)</li>
+</ul>
+<h2 id="reprc-communication-structs"><code>#[repr(C)]</code> Communication Structs <a href="#reprc-communication-structs" class="heading-anchor" aria-label="Permalink to #[repr(C)] Communication Structs">#</a></h2>
+<p>Found in <code>ghostring-common</code>, these structs define the binary format:</p>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// Example: simplified event structure</span>
+<span class="cp">#[repr(C)]</span>
+<span class="k">pub</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">ExecveEvent</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">pid</span><span class="p">:</span><span class="w"> </span><span class="kt">u32</span><span class="p">,</span><span class="w">           </span><span class="c1">// Process ID</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">ppid</span><span class="p">:</span><span class="w"> </span><span class="kt">u32</span><span class="p">,</span><span class="w">          </span><span class="c1">// Parent process ID</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">uid</span><span class="p">:</span><span class="w"> </span><span class="kt">u32</span><span class="p">,</span><span class="w">           </span><span class="c1">// User ID</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">gid</span><span class="p">:</span><span class="w"> </span><span class="kt">u32</span><span class="p">,</span><span class="w">           </span><span class="c1">// Group ID</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">flags</span><span class="p">:</span><span class="w"> </span><span class="kt">u64</span><span class="p">,</span><span class="w">         </span><span class="c1">// Event flags</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">timestamp</span><span class="p">:</span><span class="w"> </span><span class="kt">u64</span><span class="p">,</span><span class="w">     </span><span class="c1">// Nanosecond timestamp</span>
+<span class="w">    </span><span class="c1">// command[16]: truncated command name (roadmap: advanced path extraction)</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h2 id="per-cpu-buffer-polling">Per-CPU Buffer Polling <a href="#per-cpu-buffer-polling" class="heading-anchor" aria-label="Permalink to Per-CPU Buffer Polling">#</a></h2>
+<p>Since <code>PerfEventArray</code> uses per-CPU buffers:</p>
+<ul>
+<li>User daemon must poll <strong>each CPU's ring buffer</strong></li>
+<li>Asynchronous polling via Tokio</li>
+<li>Events may be lost if buffers fill up (overwrite policy)</li>
+<li>Requires understanding of per-CPU data organization</li>
+</ul>
+<h2 id="buffer-management">Buffer Management <a href="#buffer-management" class="heading-anchor" aria-label="Permalink to Buffer Management">#</a></h2>
+<ul>
+<li><strong>Ring buffer layout</strong>: Producer (kernel) writes, consumer (user) reads</li>
+<li><strong>Head/tail pointers</strong>: Track consumed/produced data</li>
+<li><strong>Batch processing</strong>: Pull multiple events per poll cycle</li>
+<li><strong>Backpressure</strong>: Handle full buffers (drop or block)</li>
+</ul>
+<h2 id="related-documentation">Related Documentation <a href="#related-documentation" class="heading-anchor" aria-label="Permalink to Related Documentation">#</a></h2>
+<ul>
+<li><a href="perf-buffer-internals.html">Perf Buffer Internals</a> — Low-level ring buffer architecture, mmap header layouts, and pointer synchronization.</li>
+<li><a href="ghostring-common-structs.html">ghostring-common Struct Design</a> — <code>#[repr(C)]</code> struct definitions bridging kernel and user space.</li>
+<li><a href="ghostring-user-daemon.html">ghostring User Daemon</a> — Tokio async ingestion, per-CPU polling loops, and alert routing.</li>
+<li><a href="aya-framework.html">Aya Framework</a> — Aya map abstractions and <code>aya-poll</code> asynchronous polling engine.</li>
+<li><a href="architecture-overview.html">Architecture Overview</a> — End-to-end telemetry pipeline and workspace crate roles.</li>
+<li><a href="btf-co-re-deep-dive.html">BTF &amp; CO-RE Deep Dive</a> — Impact of BTF on struct layout and cross-kernel binary compatibility.</li>
+<li><a href="testing-strategy.html">Testing Strategy</a> — Unit tests for struct alignment and integration benchmarks for throughput.</li>
+<li><a href="troubleshooting-guide.html">Troubleshooting Guide</a> — Resolving ring buffer overflows, lost events, and polling errors.</li>
+</ul>
+        </article>
+
+        <div class="doc-pagination">
+
+      <a href="ghostring-common-structs.html" class="pagination-card prev-card">
+        <span class="pagination-label">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          Previous
+        </span>
+        <span class="pagination-title">ghostring-common: C-Compatible Structs Deep Dive</span>
+      </a>
+
+      <a href="perf-buffer-internals.html" class="pagination-card next-card">
+        <span class="pagination-label">
+          Next
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </span>
+        <span class="pagination-title">Perf Buffer Internals</span>
+      </a>
+</div>
+
+        <footer class="docs-footer">
+          <div class="footer-left">
+            <span>GhostRing eBPF Security Subsystem • Licensed under GPLv3</span>
+          </div>
+          <div class="footer-right">
+            <a href="#top" class="back-to-top-btn">Back to top ↑</a>
+          </div>
+        </footer>
+      </div>
+    </main>
+
+    <!-- Right "On This Page" Sidebar -->
+    <aside class="docs-toc-aside">
+      <div class="toc-sticky-container">
+        <div class="toc-heading">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+          <span>On this page</span>
+        </div>
+        <ul class="toc-list">
+
+      <li class="toc-item toc-item-h2">
+        <a href="#telemetry-pipeline-overview" class="toc-link" data-heading="telemetry-pipeline-overview">Telemetry Pipeline Overview</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#pipeline-stages" class="toc-link" data-heading="pipeline-stages">Pipeline Stages</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#perfeventarray-ring-buffer-map" class="toc-link" data-heading="perfeventarray-ring-buffer-map">PerfEventArray Ring Buffer Map</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#kernel-side-transmission" class="toc-link" data-heading="kernel-side-transmission">Kernel-Side Transmission</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#user-side-ingestion" class="toc-link" data-heading="user-side-ingestion">User-Side Ingestion</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#reprc-communication-structs" class="toc-link" data-heading="reprc-communication-structs">#[repr(C)] Communication Structs</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#per-cpu-buffer-polling" class="toc-link" data-heading="per-cpu-buffer-polling">Per-CPU Buffer Polling</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#buffer-management" class="toc-link" data-heading="buffer-management">Buffer Management</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#related-documentation" class="toc-link" data-heading="related-documentation">Related Documentation</a>
+      </li>
+</ul>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Interactive Search Modal -->
+  <div id="search-modal" class="search-modal" aria-hidden="true" role="dialog">
+    <div class="search-modal-backdrop"></div>
+    <div class="search-modal-box">
+      <div class="search-input-wrapper">
+        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="search-input" class="search-input" placeholder="Search documentation, topics, APIs, CLI flags..." autocomplete="off">
+        <button id="search-clear-btn" class="search-clear-btn" aria-label="Clear query">&times;</button>
+      </div>
+      <div id="search-results" class="search-results">
+        <div class="search-initial-state">Type a keyword to search docs...</div>
+      </div>
+      <div class="search-modal-footer">
+        <span class="search-hint"><kbd>↑</kbd><kbd>↓</kbd> to navigate</span>
+        <span class="search-hint"><kbd>Enter</kbd> to select</span>
+        <span class="search-hint"><kbd>Esc</kbd> to close</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/search-index.js"></script>
+  <script src="assets/docs.js"></script>
+</body>
+</html>

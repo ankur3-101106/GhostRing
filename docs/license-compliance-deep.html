@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GhostRing License Compliance Deep Dive | GhostRing Documentation</title>
+  <meta name="description" content="GNU General Public License v3.0 (GPLv3) compliance analysis, Linux kernel verifier license checking, and BPF helper access. - GhostRing Ring 0 eBPF Telemetry Engine">
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+  <link rel="stylesheet" href="assets/docs.css">
+  <script>
+    (function() {
+      const stored = localStorage.getItem('ghostring_docs_theme');
+      if (stored) {
+        document.documentElement.setAttribute('data-theme', stored);
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+</head>
+<body class="docs-body">
+
+  <!-- Top Navigation Bar -->
+  <header class="top-nav">
+    <div class="top-nav-inner">
+      <div class="nav-left">
+        <button id="mobile-sidebar-toggle" class="nav-icon-btn mobile-only" aria-label="Open Sidebar Menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+        <a href="index.html" class="brand-link">
+          <img src="assets/logo.svg" alt="GhostRing Logo" class="brand-logo" width="32" height="32">
+          <div class="brand-info">
+            <span class="brand-name">GhostRing</span>
+            <span class="brand-tag">Ring 0 Telemetry</span>
+          </div>
+        </a>
+        <span class="version-pill">v0.1.0</span>
+      </div>
+
+      <div class="nav-center">
+        <button id="search-trigger-btn" class="search-trigger" type="button" aria-label="Search documentation">
+          <svg class="search-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <span class="search-placeholder">Search documentation...</span>
+          <span class="search-shortcut"><kbd>Ctrl</kbd><kbd>K</kbd></span>
+        </button>
+      </div>
+
+      <div class="nav-right">
+        <button id="theme-toggle" class="nav-icon-btn" type="button" aria-label="Toggle light/dark theme" title="Toggle theme">
+          <svg class="theme-icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+          <svg class="theme-icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        </button>
+        <a href="https://github.com/ankur/ghostring" target="_blank" rel="noopener noreferrer" class="nav-icon-btn github-btn" aria-label="GitHub Repository" title="GitHub">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"></path></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Documentation Container -->
+  <div class="docs-layout">
+    
+    <!-- Left Navigation Sidebar -->
+    <aside id="docs-sidebar" class="docs-sidebar">
+      <div class="sidebar-scroller">
+        <nav class="sidebar-nav" aria-label="Main Navigation">
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">Documentation Suite</div>
+      <ul class="sidebar-links">
+        <li>
+          <a href="index.html" class="sidebar-link">
+            <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            <span>Documentation Hub</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">01</span>
+        <span class="group-title">Foundational Architecture & Environment</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="architecture-overview.html" class="sidebar-link" title="Architecture Overview">
+            <span class="link-bullet"></span>
+            <span class="link-text">Architecture Overview</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="development-environment.html" class="sidebar-link" title="Development Environment">
+            <span class="link-bullet"></span>
+            <span class="link-text">Development Environment</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ebpf-fundamentals.html" class="sidebar-link" title="eBPF Fundamentals">
+            <span class="link-bullet"></span>
+            <span class="link-text">eBPF Fundamentals</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="kernel-instrumentation.html" class="sidebar-link" title="Kernel Instrumentation">
+            <span class="link-bullet"></span>
+            <span class="link-text">Kernel Instrumentation</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">02</span>
+        <span class="group-title">Kernel Space & eBPF Engineering</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="ebpf-internals.html" class="sidebar-link" title="eBPF Internals &amp; Bytecode">
+            <span class="link-bullet"></span>
+            <span class="link-text">eBPF Internals &amp; Bytecode</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="aya-framework.html" class="sidebar-link" title="Aya Framework">
+            <span class="link-bullet"></span>
+            <span class="link-text">Aya Framework</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="btf-co-re-deep-dive.html" class="sidebar-link" title="BTF &amp; CO-RE Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">BTF &amp; CO-RE Deep Dive</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ghostring-common-structs.html" class="sidebar-link" title="ghostring-common Structs">
+            <span class="link-bullet"></span>
+            <span class="link-text">ghostring-common Structs</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">03</span>
+        <span class="group-title">Telemetry & User Space Pipeline</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="event-transport.html" class="sidebar-link" title="Event Transport">
+            <span class="link-bullet"></span>
+            <span class="link-text">Event Transport</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="perf-buffer-internals.html" class="sidebar-link" title="Perf Buffer Internals">
+            <span class="link-bullet"></span>
+            <span class="link-text">Perf Buffer Internals</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ghostring-user-daemon.html" class="sidebar-link" title="ghostring User Daemon">
+            <span class="link-bullet"></span>
+            <span class="link-text">ghostring User Daemon</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">04</span>
+        <span class="group-title">Security, Compliance & Governance</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="security-requirements.html" class="sidebar-link" title="Security Requirements">
+            <span class="link-bullet"></span>
+            <span class="link-text">Security Requirements</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="security-model-deep-dive.html" class="sidebar-link" title="Security Model Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">Security Model Deep Dive</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="license-compliance-deep.html" class="sidebar-link active" title="License Compliance Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">License Compliance Deep Dive</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">05</span>
+        <span class="group-title">Quality Assurance, Operations & Roadmap</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="build-system-workspace.html" class="sidebar-link" title="Build System &amp; Workspace">
+            <span class="link-bullet"></span>
+            <span class="link-text">Build System &amp; Workspace</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="testing-strategy.html" class="sidebar-link" title="Testing Strategy">
+            <span class="link-bullet"></span>
+            <span class="link-text">Testing Strategy</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="troubleshooting-guide.html" class="sidebar-link" title="Troubleshooting Guide">
+            <span class="link-bullet"></span>
+            <span class="link-text">Troubleshooting Guide</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="roadmap-features-deep.html" class="sidebar-link" title="Roadmap Features Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">Roadmap Features Deep Dive</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+</nav>
+      </div>
+    </aside>
+    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+    <!-- Center Content Article -->
+    <main class="docs-main">
+      <div class="content-wrapper">
+        
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <a href="index.html" class="crumb-link">Docs</a>
+      <span class="crumb-sep">/</span>
+      <span class="crumb-cat">Security, Compliance &amp; Governance</span>
+      <span class="crumb-sep">/</span>
+      <span class="crumb-active">GhostRing License Compliance Deep Dive</span>
+    </nav>
+    
+        
+        <article class="markdown-body">
+          <h1 id="ghostring-license-compliance-deep-dive">GhostRing License Compliance Deep Dive <a href="#ghostring-license-compliance-deep-dive" class="heading-anchor" aria-label="Permalink to GhostRing License Compliance Deep Dive">#</a></h1>
+<h2 id="legal-framework-and-kernel-requirements">Legal Framework and Kernel Requirements <a href="#legal-framework-and-kernel-requirements" class="heading-anchor" aria-label="Permalink to Legal Framework and Kernel Requirements">#</a></h2>
+<h3 id="gplv3-and-the-linux-kernel-ebpf-verifier">GPLv3 and the Linux Kernel eBPF Verifier <a href="#gplv3-and-the-linux-kernel-ebpf-verifier" class="heading-anchor" aria-label="Permalink to GPLv3 and the Linux Kernel eBPF Verifier">#</a></h3>
+<p>The relationship between GhostRing's GPLv3 licensing and the Linux kernel eBPF verifier is <strong>technical requirement</strong>, not merely legal preference. This section explains the mechanism.</p>
+<h3 id="verifier-license-check-mechanism">Verifier License Check Mechanism <a href="#verifier-license-check-mechanism" class="heading-anchor" aria-label="Permalink to Verifier License Check Mechanism">#</a></h3>
+<p>When an eBPF program is loaded into the kernel, the verifier performs these steps:</p>
+<ol>
+<li><strong>Read <code>__license</code> section</strong> from the loaded ELF binary</li>
+<li><strong>Compare against allowed licenses</strong></li>
+<li><strong>Grant or restrict helper access</strong> based on result</li>
+</ol>
+<div class="code-block-container" data-lang="CODE">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">CODE</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code>┌──────────────────────────────────────────────────────────────┐
+│  Kernel Verifier License Check Flow                          │
+├──────────────────────────────────────────────────────────────┤
+│                                                                │
+│  Step 1: Program loading                                     │
+│   ├─ eBPF ELF loaded into kernel address space               │
+│   ├─ `__license` section extracted                           │
+│   └─ Section content: &quot;GPLv3\0&quot; (or other)                   │
+│                                                                │
+│  Step 2: License comparison                                  │
+│   ├─ Allowed: &quot;GPLv3&quot;, &quot;GPL&quot; (legacy)                        │
+│   ├─ Restricted: &quot;MIT&quot;, &quot;BSD&quot;, &quot;proprietary&quot;, &quot;Apache&quot;      │
+│   └─ None/empty: program rejected                            │
+│                                                                │
+│  Step 3: Helper access decision                              │
+│   ├─ GPLv3/GPL: Full helper access (60+ helpers)             │
+│   ├─ Restricted: ~10 GPL-friendly helpers only               │
+│   └─ None: Program load denied, verifier error               │
+│                                                                │
+│  Step 4: Loading decision                                    │
+│   ├─ Full access: program loaded successfully                │
+│   ├─ Restricted: program may load with limited helpers       │
+│   └─ None: verifier error &quot;license check failed&quot;, load aborted│
+│                                                                │
+└────────────────────────────────────────────────────────────────┘
+</code></pre>
+</div>
+<h3 id="license-strings-and-their-meaning">License Strings and Their Meaning <a href="#license-strings-and-their-meaning" class="heading-anchor" aria-label="Permalink to License Strings and Their Meaning">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>License String</th>
+<th>Verifier Action</th>
+<th>Helper Access</th>
+<th>GhostRing Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"GPLv3"</code></td>
+<td>Full access granted</td>
+<td>All BPF helpers available</td>
+<td>✅ <strong>Required</strong></td>
+</tr>
+<tr>
+<td><code>"GPL"</code> (v2)</td>
+<td>Full access granted (legacy)</td>
+<td>All BPF helpers available</td>
+<td>⚠️ Works but GPLv3 preferred</td>
+</tr>
+<tr>
+<td><code>"MIT"</code></td>
+<td>Restricted helpers only</td>
+<td>~10 GPL-friendly helpers</td>
+<td>❌ Insufficient</td>
+</tr>
+<tr>
+<td><code>"BSD"</code></td>
+<td>Restricted helpers only</td>
+<td>~10 GPL-friendly helpers</td>
+<td>❌ Insufficient</td>
+</tr>
+<tr>
+<td><code>"Apache-2.0"</code></td>
+<td>Restricted helpers only</td>
+<td>~10 GPL-friendly helpers</td>
+<td>❌ Insufficient</td>
+</tr>
+<tr>
+<td><code>""</code> (empty)</td>
+<td>Program rejected</td>
+<td>None</td>
+<td>❌ Load denied</td>
+</tr>
+<tr>
+<td><code>"GPL v2"</code> (spacing)</td>
+<td>May be rejected</td>
+<td>Unpredictable</td>
+<td>❌ Unreliable</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="why-gplv3-is-non-negotiable-for-ghostring">Why GPLv3 is Non-Negotiable for GhostRing <a href="#why-gplv3-is-non-negotiable-for-ghostring" class="heading-anchor" aria-label="Permalink to Why GPLv3 is Non-Negotiable for GhostRing">#</a></h3>
+<h4 id="1-helper-function-categorization">1. Helper Function Categorization <a href="#1-helper-function-categorization" class="heading-anchor" aria-label="Permalink to 1. Helper Function Categorization">#</a></h4>
+<p>The Linux kernel categorizes BPF helpers into two groups:</p>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Helpers Count</th>
+<th>Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>GPL-friendly</strong></td>
+<td>~10 helpers</td>
+<td><code>bpf_trace_printk</code>, <code>bpf_ktime_get_ns</code>, <code>bpf_get_current_comm</code></td>
+</tr>
+<tr>
+<td><strong>GPL-required</strong></td>
+<td>~60+ helpers</td>
+<td><code>bpf_probe_read_user</code>, <code>bpf_probe_read_user_str</code>, <code>bpf_perf_event_output</code>, network helpers, memory reading</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Without GPLv3</strong>, GhostRing can only use the ~10 "friendly" helpers, which severely limits functionality:</p>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>GPLv3 Helpers</th>
+<th>GPL-Friendly Only</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>pid/uid extraction</strong></td>
+<td>✅ <code>bpf_get_current_pid_tgid</code> + <code>bpf_get_current_uid_gid</code></td>
+<td>✅ (both categories overlap)</td>
+</tr>
+<tr>
+<td><strong>Full path extraction</strong></td>
+<td>✅ <code>bpf_probe_read_user_str</code></td>
+<td>❌ Not available</td>
+</tr>
+<tr>
+<td><strong>PerfEventArray output</strong></td>
+<td>✅ <code>bpf_perf_event_output</code></td>
+<td>✅ (overlaps)</td>
+</tr>
+<tr>
+<td><strong>Socket address reading</strong></td>
+<td>✅ <code>bpf_probe_read_user</code> variants</td>
+<td>⚠️ Limited versions only</td>
+</tr>
+<tr>
+<td><strong>Network protocol analysis</strong></td>
+<td>✅ Full helper set</td>
+<td>❌ Missing key helpers</td>
+</tr>
+<tr>
+<td><strong>File path monitoring</strong></td>
+<td>✅ Full read capabilities</td>
+<td>⚠️ Severely limited</td>
+</tr>
+</tbody>
+</table></div>
+<h4 id="2-technical-compliance-note-from-kernel-documentation">2. Technical Compliance Note (From Kernel Documentation) <a href="#2-technical-compliance-note-from-kernel-documentation" class="heading-anchor" aria-label="Permalink to 2. Technical Compliance Note (From Kernel Documentation)">#</a></h4>
+<blockquote>
+<p>"When an eBPF program is loaded into the kernel address space, the verifier inspects the program's license section. If the program is not explicitly declared as GPL-compatible, the kernel restricts access to advanced BPF helper functions (such as deep memory-reading utilities and tracing helpers). Licensing the entire codebase under GPLv3 ensures 100% binary compatibility with the Linux kernel subsystem."</p>
+</blockquote>
+<p>This is quoted from the project's README and PROJECT.md files.</p>
+<h4 id="3-license-section-format">3. License Section Format <a href="#3-license-section-format" class="heading-anchor" aria-label="Permalink to 3. License Section Format">#</a></h4>
+<p>The <code>__license</code> section must contain exactly:</p>
+<div class="code-block-container" data-lang="ASSEMBLY">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">ASSEMBLY</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="nf">.section</span><span class="w"> </span><span class="s">&quot;__license&quot;</span><span class="p">,</span><span class="s">&quot;a&quot;</span><span class="p">,</span><span class="nv">progbits</span>
+<span class="nf">.global</span><span class="w"> </span><span class="nv">__license</span>
+<span class="nf">.type</span><span class="w"> </span><span class="nv">__license</span><span class="p">,</span><span class="err">@</span><span class="nv">proctype</span>
+<span class="nl">__license:</span>
+<span class="nf">.asciz</span><span class="w"> </span><span class="s">&quot;GPLv3&quot;</span>
+</code></pre>
+</div>
+<p><strong>Critical requirements</strong>:
+- Must be <code>.asciz "GPLv3"</code> (with null terminator)
+- Must be <code>.global __license</code> (exported symbol)
+- Must be placed via <code>bpf-linker</code> or compiler flags
+- Must match exactly; <code>"GPL "</code> (with space) or <code>"GPLv2"</code> (wrong version) won't work</p>
+<h3 id="enforcement-in-build-system">Enforcement in Build System <a href="#enforcement-in-build-system" class="heading-anchor" aria-label="Permalink to Enforcement in Build System">#</a></h3>
+<h4 id="buildrs-for-ghostring-ebpf">build.rs for ghostring-ebpf <a href="#buildrs-for-ghostring-ebpf" class="heading-anchor" aria-label="Permalink to build.rs for ghostring-ebpf">#</a></h4>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// CRITICAL: This ensures the __license section is GPLv3</span>
+<span class="c1">// Without this, the kernel verifier will restrict helpers or reject the program</span>
+
+<span class="k">fn</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Emit compiler argument to add __license section</span>
+<span class="w">    </span><span class="c1">// This generates the .section &quot;__license&quot;,&quot;a&quot;,progbits</span>
+<span class="w">    </span><span class="c1">// with .global __license and .asciz &quot;GPLv3&quot;</span>
+<span class="w">    </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;cargo:rustc-link-arg-bpf=--license=GPLv3&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// Additional BTF-related flags (optional but recommended)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="n">std</span><span class="p">::</span><span class="n">path</span><span class="p">::</span><span class="n">Path</span><span class="p">::</span><span class="n">new</span><span class="p">(</span><span class="s">&quot;/sys/kernel/btf/vmlinux&quot;</span><span class="p">).</span><span class="n">exists</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;cargo:rustc-link-arg-bpf=--btf&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Verify BTF availability during build</span>
+<span class="w">    </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;cargo:rustc-cfg=with_btf&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h4 id="verification-commands">Verification Commands <a href="#verification-commands" class="heading-anchor" aria-label="Permalink to Verification Commands">#</a></h4>
+<div class="code-block-container" data-lang="BASH">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">BASH</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># 1. Check the ELF has the license section</span>
+readelf<span class="w"> </span>-S<span class="w"> </span>target/bpfel-unknown-none/release/ghostring_ebpf<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>license
+
+<span class="c1"># 2. Verify section content</span>
+readelf<span class="w"> </span>-x<span class="w"> </span>.license<span class="w"> </span>target/bpfel-unknown-none/release/ghostring_ebpf
+
+<span class="c1"># 3. Check with bpftool</span>
+bpftool<span class="w"> </span>prog<span class="w"> </span>show<span class="w"> </span><span class="nb">type</span><span class="w"> </span>tracepoint<span class="w"> </span>id<span class="w"> </span>&lt;prog_id&gt;<span class="w"> </span>btf
+
+<span class="c1"># 4. Try loading the program (will fail without GPLv3)</span>
+sudo<span class="w"> </span>-E<span class="w"> </span>cargo<span class="w"> </span>run<span class="w"> </span>--release<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-30
+
+<span class="c1"># Expected: daemon starts without &quot;license check failed&quot; errors</span>
+<span class="c1"># Unexpected: &quot;verifier error: license check failed&quot; or similar</span>
+</code></pre>
+</div>
+<h3 id="licensing-the-crate-ecosystem">Licensing the Crate Ecosystem <a href="#licensing-the-crate-ecosystem" class="heading-anchor" aria-label="Permalink to Licensing the Crate Ecosystem">#</a></h3>
+<h4 id="ghostring-common-cdylib">ghostring-common (cdylib) <a href="#ghostring-common-cdylib" class="heading-anchor" aria-label="Permalink to ghostring-common (cdylib)">#</a></h4>
+<ul>
+<li><strong>License</strong>: GPLv3 (inherited from root or explicitly stated)</li>
+<li><strong>Rationale</strong>: Even though this crate contains only structs, it's part of the GPLv3-licensed project</li>
+<li><strong>Exception</strong>: Could be MIT/BSD/CC0 if truly standalone, but then ghostring-ebpf can't use GPLv3 helpers</li>
+<li><strong>Recommendation</strong>: GPLv3 to match the project</li>
+</ul>
+<div class="code-block-container" data-lang="TOML">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">TOML</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># ghostring-common/Cargo.toml</span>
+<span class="k">[package]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ghostring-common&quot;</span>
+<span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span>
+<span class="n">crate-type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;cdylib&quot;</span><span class="p">]</span>
+
+<span class="k">[license]</span>
+<span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;GPL-3.0&quot;</span>
+</code></pre>
+</div>
+<h4 id="ghostring-ebpf-no_std-bpfel-unknown-none">ghostring-ebpf (no_std, bpfel-unknown-none) <a href="#ghostring-ebpf-no_std-bpfel-unknown-none" class="heading-anchor" aria-label="Permalink to ghostring-ebpf (no_std, bpfel-unknown-none)">#</a></h4>
+<ul>
+<li><strong>License</strong>: GPLv3 (required for helper access)</li>
+<li><strong>Rationale</strong>: Directly interfaces with kernel; must comply with kernel verifier</li>
+<li><strong>No ambiguity</strong>: GPLv3 is mandatory, not optional</li>
+</ul>
+<div class="code-block-container" data-lang="TOML">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">TOML</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># ghostring-ebpf/Cargo.toml</span>
+<span class="k">[package]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ghostring-ebpf&quot;</span>
+<span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span>
+<span class="n">crate-type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;cdylib&quot;</span><span class="p">]</span>
+
+<span class="k">[license]</span>
+<span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;GPL-3.0&quot;</span>
+</code></pre>
+</div>
+<h4 id="ghostring-std-tokio-daemon">ghostring (std, Tokio daemon) <a href="#ghostring-std-tokio-daemon" class="heading-anchor" aria-label="Permalink to ghostring (std, Tokio daemon)">#</a></h4>
+<ul>
+<li><strong>License</strong>: GPLv3 (inherited from workspace)</li>
+<li><strong>Rationale</strong>: User-space component; GPLv3 ensures compatibility if linked with GPLv3 eBPF code</li>
+<li><strong>Exception</strong>: Can use GPLv3-or-later (GPLv3 or any later version)</li>
+</ul>
+<div class="code-block-container" data-lang="TOML">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">TOML</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># ghostring/Cargo.toml</span>
+<span class="k">[package]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ghostring&quot;</span>
+<span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span>
+<span class="n">edition</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;2021&quot;</span>
+
+<span class="k">[license]</span>
+<span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;GPL-3.0&quot;</span>
+</code></pre>
+</div>
+<h3 id="gplv3-compliance-requirements">GPLv3 Compliance Requirements <a href="#gplv3-compliance-requirements" class="heading-anchor" aria-label="Permalink to GPLv3 Compliance Requirements">#</a></h3>
+<h4 id="source-code-availability">Source Code Availability <a href="#source-code-availability" class="heading-anchor" aria-label="Permalink to Source Code Availability">#</a></h4>
+<p>Per GPLv3 Section 3, when distributing GhostRing:</p>
+<ol>
+<li><strong>Accompany with source code</strong>: Include the complete source code</li>
+<li><strong>Offer to provide source</strong>: Provide a written offer valid for at least 3 years</li>
+<li><strong>Binary-only distribution</strong>: Allowed only if source is also provided</li>
+</ol>
+<div class="code-block-container" data-lang="BASH">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">BASH</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1"># Example: Providing source via repository</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;GhostRing source available at:&quot;</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;  https://github.com/ankur3-101106/GhostRing&quot;</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Or: download via:&quot;</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;  git clone https://github.com/ankur3-101106/GhostRing.git&quot;</span>
+</code></pre>
+</div>
+<h4 id="corresponding-source">Corresponding Source <a href="#corresponding-source" class="heading-anchor" aria-label="Permalink to Corresponding Source">#</a></h4>
+<p>Per GPLv3 Section 6, the "Corresponding Source" includes:</p>
+<ul>
+<li>All source code needed to generate, install, and run the object code</li>
+<li>Scripts to control those activities</li>
+<li><strong>Does NOT include</strong>: System libraries or general-purpose tools</li>
+</ul>
+<p>For GhostRing, the Corresponding Source includes:</p>
+<div class="code-block-container" data-lang="CODE">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">CODE</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code>├── CLAUDE.md              # This file (guidance for Claude Code)
+├── PROJECT.md             # Project setup guidance
+├── README.md              # High-level overview and roadmap
+├── LICENSE                # GPLv3 license text
+├── .gitignore             # Build artifacts ignore patterns
+├── docs/                  # This directory — technical knowledge base
+│   ├── *.md               # All deep-dive knowledge files
+├── ghostring-common/      # C-compatible structs source
+│   └── src/               # Rust source files
+├── ghostring-ebpf/        # eBPF bytecode source
+│   └── src/               # BPF program source
+└── ghostring/             # User-space daemon source
+    └── src/               # Tokio daemon source
+</code></pre>
+</div>
+<h4 id="third-party-dependencies">Third-Party Dependencies <a href="#third-party-dependencies" class="heading-anchor" aria-label="Permalink to Third-Party Dependencies">#</a></h4>
+<p>GhostRing depends on these GPL-compatible (or MIT) crates:</p>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Crate</th>
+<th>License</th>
+<th>Compatibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>aya</code></td>
+<td>Apache-2.0 or GPL-3.0+</td>
+<td>✅ Compatible (dual-licensed)</td>
+</tr>
+<tr>
+<td><code>aya-ebpf</code></td>
+<td>Apache-2.0 or GPL-3.0+</td>
+<td>✅ Compatible</td>
+</tr>
+<tr>
+<td><code>aya-poll</code></td>
+<td>Apache-2.0 or GPL-3.0+</td>
+<td>✅ Compatible</td>
+</tr>
+<tr>
+<td><code>clap</code></td>
+<td>MIT-0</td>
+<td>✅ Compatible</td>
+</tr>
+<tr>
+<td><code>tracing</code></td>
+<td>MIT-0</td>
+<td>✅ Compatible</td>
+</tr>
+<tr>
+<td><code>tokio</code></td>
+<td>MIT</td>
+<td>✅ Compatible</td>
+</tr>
+<tr>
+<td><code>num_cpus</code></td>
+<td>MIT or Apache-2.0</td>
+<td>✅ Compatible</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>No GPL-incompatible dependencies</strong> are used, which maintains the GPLv3 compliance of the entire project.</p>
+<h3 id="license-transition-path">License Transition Path <a href="#license-transition-path" class="heading-anchor" aria-label="Permalink to License Transition Path">#</a></h3>
+<p>If the project ever needs to change licenses:</p>
+<ol>
+<li><strong>Cannot simply relicense</strong>: GPLv3 confers freedoms that can't be taken away</li>
+<li><strong>All contributors must agree</strong>: Each contributor holds copyright to their contributions</li>
+<li><strong>Fork required</strong>: New project under different license would be a fork</li>
+<li><strong>Practical path</strong>: 
+   - Keep GPLv3 for eBPF portion (kernel requirement)
+   - potential dual-licensing for non-kernel parts
+   - Contact FSF or legal counsel for complex transitions</li>
+</ol>
+<h3 id="common-license-mistakes-to-avoid">Common License Mistakes to Avoid <a href="#common-license-mistakes-to-avoid" class="heading-anchor" aria-label="Permalink to Common License Mistakes to Avoid">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Mistake</th>
+<th>Consequence</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Wrong license string</strong></td>
+<td><code>--license=GPL</code> instead of <code>--license=GPLv3</code></td>
+<td>Restricted helpers; verify with <code>readelf</code></td>
+</tr>
+<tr>
+<td><strong>Missing <code>__license</code> section</strong></td>
+<td>Forget <code>println!("cargo:rustc-link-arg-bpf=--license=GPLv3")</code></td>
+<td>Program load denied by verifier</td>
+</tr>
+<tr>
+<td><strong>Version mismatch</strong></td>
+<td><code>--license=GPLv2</code> instead of <code>GPLv3</code></td>
+<td>Missing advanced helpers; not recommended</td>
+</tr>
+<tr>
+<td><strong>Typed wrong</strong></td>
+<td><code>--license=gplv3</code> (lowercase)</td>
+<td>May be case-sensitive; use <code>GPLv3</code> exact</td>
+</tr>
+<tr>
+<td><strong>Inconsistent across crates</strong></td>
+<td>Different licenses in common/ebpf/ghostring</td>
+<td>Unified workspace GPLv3; all crates must comply</td>
+</tr>
+<tr>
+<td><strong>Dynamic linking exception</strong></td>
+<td>Assuming <code>.ko</code> module exceptions</td>
+<td>eBPF isn't <code>.ko</code>; same GPLv3 requirements apply</td>
+</tr>
+<tr>
+<td><strong>Proprietary dependency</strong></td>
+<td>Using non-GPL-compatible crates</td>
+<td>Replace with MIT/BSD/Apache alternatives</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="compliance-checklist">Compliance Checklist <a href="#compliance-checklist" class="heading-anchor" aria-label="Permalink to Compliance Checklist">#</a></h3>
+<div class="code-block-container" data-lang="CODE">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">CODE</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code>[ ] LICENSE file exists and contains GPLv3 text (full version, not summary)
+[ ] All three crate Cargo.toml files have [license] = &quot;GPL-3.0&quot; or equivalent
+[ ] build.rs in ghostring-ebpf emits --license=GPLv3 flag
+[ ] __license ELF section present and contains &quot;GPLv3\0&quot;
+[ ] No non-GPL-compatible dependencies in ghostring-ebpf (no_std crate)
+[ ] README.md and PROJECT.md mention GPLv3 licensing requirement
+[ ] Documentation (docs/license-compliance-deep.md) exists and is accurate
+[ ] CI/CD checks for license compliance (grep for license string in build output)
+[ ] Documentation warns users about GPLv3 requirement for full eBPF access
+[ ] Source code repository includes all materials needed to modify and rebuild
+</code></pre>
+</div>
+<h2 id="related-documentation">Related Documentation <a href="#related-documentation" class="heading-anchor" aria-label="Permalink to Related Documentation">#</a></h2>
+<ul>
+<li><a href="security-requirements.html">Security Requirements</a> — Security motivations and licensing prerequisites for kernel observability.</li>
+<li><a href="security-model-deep-dive.html">Security Model Deep Dive</a> — Threat model and integrity guarantees of kernel-mode telemetry.</li>
+<li><a href="ebpf-internals.html">eBPF Internals &amp; Bytecode</a> — The <code>__license</code> ELF section and verifier license checking mechanics.</li>
+<li><a href="aya-framework.html">Aya Framework</a> — Aya's compile-time licensing constraints and helper declarations.</li>
+<li><a href="build-system-workspace.html">Build System &amp; Workspace</a> — Passing linker license arguments via <code>build.rs</code> and <code>bpf-linker</code>.</li>
+<li><a href="kernel-instrumentation.html">Kernel Instrumentation</a> — Tracing helpers that require GPL-compatible licensing.</li>
+<li><a href="troubleshooting-guide.html">Troubleshooting Guide</a> — Resolving <code>VerifierError::License</code> and permission failures.</li>
+</ul>
+        </article>
+
+        <div class="doc-pagination">
+
+      <a href="security-model-deep-dive.html" class="pagination-card prev-card">
+        <span class="pagination-label">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          Previous
+        </span>
+        <span class="pagination-title">GhostRing Security Model Deep Dive</span>
+      </a>
+
+      <a href="build-system-workspace.html" class="pagination-card next-card">
+        <span class="pagination-label">
+          Next
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </span>
+        <span class="pagination-title">Build System &amp; Workspace</span>
+      </a>
+</div>
+
+        <footer class="docs-footer">
+          <div class="footer-left">
+            <span>GhostRing eBPF Security Subsystem • Licensed under GPLv3</span>
+          </div>
+          <div class="footer-right">
+            <a href="#top" class="back-to-top-btn">Back to top ↑</a>
+          </div>
+        </footer>
+      </div>
+    </main>
+
+    <!-- Right "On This Page" Sidebar -->
+    <aside class="docs-toc-aside">
+      <div class="toc-sticky-container">
+        <div class="toc-heading">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+          <span>On this page</span>
+        </div>
+        <ul class="toc-list">
+
+      <li class="toc-item toc-item-h2">
+        <a href="#legal-framework-and-kernel-requirements" class="toc-link" data-heading="legal-framework-and-kernel-requirements">Legal Framework and Kernel Requirements</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#gplv3-and-the-linux-kernel-ebpf-verifier" class="toc-link" data-heading="gplv3-and-the-linux-kernel-ebpf-verifier">GPLv3 and the Linux Kernel eBPF Verifier</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#verifier-license-check-mechanism" class="toc-link" data-heading="verifier-license-check-mechanism">Verifier License Check Mechanism</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#license-strings-and-their-meaning" class="toc-link" data-heading="license-strings-and-their-meaning">License Strings and Their Meaning</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#why-gplv3-is-non-negotiable-for-ghostring" class="toc-link" data-heading="why-gplv3-is-non-negotiable-for-ghostring">Why GPLv3 is Non-Negotiable for GhostRing</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#enforcement-in-build-system" class="toc-link" data-heading="enforcement-in-build-system">Enforcement in Build System</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#licensing-the-crate-ecosystem" class="toc-link" data-heading="licensing-the-crate-ecosystem">Licensing the Crate Ecosystem</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#gplv3-compliance-requirements" class="toc-link" data-heading="gplv3-compliance-requirements">GPLv3 Compliance Requirements</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#license-transition-path" class="toc-link" data-heading="license-transition-path">License Transition Path</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#common-license-mistakes-to-avoid" class="toc-link" data-heading="common-license-mistakes-to-avoid">Common License Mistakes to Avoid</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#compliance-checklist" class="toc-link" data-heading="compliance-checklist">Compliance Checklist</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#related-documentation" class="toc-link" data-heading="related-documentation">Related Documentation</a>
+      </li>
+</ul>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Interactive Search Modal -->
+  <div id="search-modal" class="search-modal" aria-hidden="true" role="dialog">
+    <div class="search-modal-backdrop"></div>
+    <div class="search-modal-box">
+      <div class="search-input-wrapper">
+        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="search-input" class="search-input" placeholder="Search documentation, topics, APIs, CLI flags..." autocomplete="off">
+        <button id="search-clear-btn" class="search-clear-btn" aria-label="Clear query">&times;</button>
+      </div>
+      <div id="search-results" class="search-results">
+        <div class="search-initial-state">Type a keyword to search docs...</div>
+      </div>
+      <div class="search-modal-footer">
+        <span class="search-hint"><kbd>↑</kbd><kbd>↓</kbd> to navigate</span>
+        <span class="search-hint"><kbd>Enter</kbd> to select</span>
+        <span class="search-hint"><kbd>Esc</kbd> to close</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/search-index.js"></script>
+  <script src="assets/docs.js"></script>
+</body>
+</html>

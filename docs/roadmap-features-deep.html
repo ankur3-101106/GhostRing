@@ -1,0 +1,1724 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GhostRing Roadmap Features Deep Dive | GhostRing Documentation</title>
+  <meta name="description" content="Architectural blueprints for advanced path extraction, socket observability, and File Integrity Monitoring. - GhostRing Ring 0 eBPF Telemetry Engine">
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+  <link rel="stylesheet" href="assets/docs.css">
+  <script>
+    (function() {
+      const stored = localStorage.getItem('ghostring_docs_theme');
+      if (stored) {
+        document.documentElement.setAttribute('data-theme', stored);
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+</head>
+<body class="docs-body">
+
+  <!-- Top Navigation Bar -->
+  <header class="top-nav">
+    <div class="top-nav-inner">
+      <div class="nav-left">
+        <button id="mobile-sidebar-toggle" class="nav-icon-btn mobile-only" aria-label="Open Sidebar Menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+        <a href="index.html" class="brand-link">
+          <img src="assets/logo.svg" alt="GhostRing Logo" class="brand-logo" width="32" height="32">
+          <div class="brand-info">
+            <span class="brand-name">GhostRing</span>
+            <span class="brand-tag">Ring 0 Telemetry</span>
+          </div>
+        </a>
+        <span class="version-pill">v0.1.0</span>
+      </div>
+
+      <div class="nav-center">
+        <button id="search-trigger-btn" class="search-trigger" type="button" aria-label="Search documentation">
+          <svg class="search-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <span class="search-placeholder">Search documentation...</span>
+          <span class="search-shortcut"><kbd>Ctrl</kbd><kbd>K</kbd></span>
+        </button>
+      </div>
+
+      <div class="nav-right">
+        <button id="theme-toggle" class="nav-icon-btn" type="button" aria-label="Toggle light/dark theme" title="Toggle theme">
+          <svg class="theme-icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+          <svg class="theme-icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        </button>
+        <a href="https://github.com/ankur/ghostring" target="_blank" rel="noopener noreferrer" class="nav-icon-btn github-btn" aria-label="GitHub Repository" title="GitHub">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"></path></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Documentation Container -->
+  <div class="docs-layout">
+    
+    <!-- Left Navigation Sidebar -->
+    <aside id="docs-sidebar" class="docs-sidebar">
+      <div class="sidebar-scroller">
+        <nav class="sidebar-nav" aria-label="Main Navigation">
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">Documentation Suite</div>
+      <ul class="sidebar-links">
+        <li>
+          <a href="index.html" class="sidebar-link">
+            <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            <span>Documentation Hub</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">01</span>
+        <span class="group-title">Foundational Architecture & Environment</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="architecture-overview.html" class="sidebar-link" title="Architecture Overview">
+            <span class="link-bullet"></span>
+            <span class="link-text">Architecture Overview</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="development-environment.html" class="sidebar-link" title="Development Environment">
+            <span class="link-bullet"></span>
+            <span class="link-text">Development Environment</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ebpf-fundamentals.html" class="sidebar-link" title="eBPF Fundamentals">
+            <span class="link-bullet"></span>
+            <span class="link-text">eBPF Fundamentals</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="kernel-instrumentation.html" class="sidebar-link" title="Kernel Instrumentation">
+            <span class="link-bullet"></span>
+            <span class="link-text">Kernel Instrumentation</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">02</span>
+        <span class="group-title">Kernel Space & eBPF Engineering</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="ebpf-internals.html" class="sidebar-link" title="eBPF Internals &amp; Bytecode">
+            <span class="link-bullet"></span>
+            <span class="link-text">eBPF Internals &amp; Bytecode</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="aya-framework.html" class="sidebar-link" title="Aya Framework">
+            <span class="link-bullet"></span>
+            <span class="link-text">Aya Framework</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="btf-co-re-deep-dive.html" class="sidebar-link" title="BTF &amp; CO-RE Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">BTF &amp; CO-RE Deep Dive</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ghostring-common-structs.html" class="sidebar-link" title="ghostring-common Structs">
+            <span class="link-bullet"></span>
+            <span class="link-text">ghostring-common Structs</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">03</span>
+        <span class="group-title">Telemetry & User Space Pipeline</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="event-transport.html" class="sidebar-link" title="Event Transport">
+            <span class="link-bullet"></span>
+            <span class="link-text">Event Transport</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="perf-buffer-internals.html" class="sidebar-link" title="Perf Buffer Internals">
+            <span class="link-bullet"></span>
+            <span class="link-text">Perf Buffer Internals</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="ghostring-user-daemon.html" class="sidebar-link" title="ghostring User Daemon">
+            <span class="link-bullet"></span>
+            <span class="link-text">ghostring User Daemon</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">04</span>
+        <span class="group-title">Security, Compliance & Governance</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="security-requirements.html" class="sidebar-link" title="Security Requirements">
+            <span class="link-bullet"></span>
+            <span class="link-text">Security Requirements</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="security-model-deep-dive.html" class="sidebar-link" title="Security Model Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">Security Model Deep Dive</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="license-compliance-deep.html" class="sidebar-link" title="License Compliance Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">License Compliance Deep Dive</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header">
+        <span class="group-badge">05</span>
+        <span class="group-title">Quality Assurance, Operations & Roadmap</span>
+      </div>
+      <ul class="sidebar-links">
+
+        <li>
+          <a href="build-system-workspace.html" class="sidebar-link" title="Build System &amp; Workspace">
+            <span class="link-bullet"></span>
+            <span class="link-text">Build System &amp; Workspace</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="testing-strategy.html" class="sidebar-link" title="Testing Strategy">
+            <span class="link-bullet"></span>
+            <span class="link-text">Testing Strategy</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="troubleshooting-guide.html" class="sidebar-link" title="Troubleshooting Guide">
+            <span class="link-bullet"></span>
+            <span class="link-text">Troubleshooting Guide</span>
+          </a>
+        </li>
+
+        <li>
+          <a href="roadmap-features-deep.html" class="sidebar-link active" title="Roadmap Features Deep Dive">
+            <span class="link-bullet"></span>
+            <span class="link-text">Roadmap Features Deep Dive</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+</nav>
+      </div>
+    </aside>
+    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+    <!-- Center Content Article -->
+    <main class="docs-main">
+      <div class="content-wrapper">
+        
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <a href="index.html" class="crumb-link">Docs</a>
+      <span class="crumb-sep">/</span>
+      <span class="crumb-cat">Quality Assurance, Operations &amp; Roadmap</span>
+      <span class="crumb-sep">/</span>
+      <span class="crumb-active">GhostRing Roadmap Features Deep Dive</span>
+    </nav>
+    
+        
+        <article class="markdown-body">
+          <h1 id="ghostring-roadmap-features-deep-dive">GhostRing Roadmap Features Deep Dive <a href="#ghostring-roadmap-features-deep-dive" class="heading-anchor" aria-label="Permalink to GhostRing Roadmap Features Deep Dive">#</a></h1>
+<h2 id="feature-1-advanced-path-extraction-via-bpf_probe_read_user_str">Feature 1: Advanced Path Extraction via <code>bpf_probe_read_user_str</code> <a href="#feature-1-advanced-path-extraction-via-bpf_probe_read_user_str" class="heading-anchor" aria-label="Permalink to Feature 1: Advanced Path Extraction via bpf_probe_read_user_str">#</a></h2>
+<h3 id="current-limitation">Current Limitation <a href="#current-limitation" class="heading-anchor" aria-label="Permalink to Current Limitation">#</a></h3>
+<p>The current <code>ExecveEvent</code> struct captures only the command name (16 bytes, truncated):</p>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="cp">#[repr(C)]</span>
+<span class="k">pub</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">ExecveEvent</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">pid</span><span class="p">:</span><span class="w"> </span><span class="kt">u32</span><span class="p">,</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">ppid</span><span class="p">:</span><span class="w"> </span><span class="kt">u32</span><span class="p">,</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">uid</span><span class="p">:</span><span class="w"> </span><span class="kt">u32</span><span class="p">,</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">gid</span><span class="p">:</span><span class="w"> </span><span class="kt">u32</span><span class="p">,</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">flags</span><span class="p">:</span><span class="w"> </span><span class="kt">u64</span><span class="p">,</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">timestamp</span><span class="p">:</span><span class="w"> </span><span class="kt">u64</span><span class="p">,</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">command</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="kt">u8</span><span class="p">;</span><span class="w"> </span><span class="mi">16</span><span class="p">],</span><span class="w">  </span><span class="c1">// Truncated command name</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<p><strong>Problem</strong>: <code>sys_enter_execve</code> provides only the 15-char (plus null) truncated command name, not the full filesystem path.</p>
+<h3 id="roadmap-solution-bpf_probe_read_user_str">Roadmap Solution: <code>bpf_probe_read_user_str</code> <a href="#roadmap-solution-bpf_probe_read_user_str" class="heading-anchor" aria-label="Permalink to Roadmap Solution: bpf_probe_read_user_str">#</a></h3>
+<h4 id="kernel-function">Kernel Function <a href="#kernel-function" class="heading-anchor" aria-label="Permalink to Kernel Function">#</a></h4>
+<div class="code-block-container" data-lang="C">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">C</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// int bpf_probe_read_user_str(void *buf, size_t size, const void *unsafe);</span>
+<span class="c1">// Reads a nul-terminated string from user space safely</span>
+</code></pre>
+</div>
+<h4 id="ebpf-program-changes">eBPF Program Changes <a href="#ebpf-program-changes" class="heading-anchor" aria-label="Permalink to eBPF Program Changes">#</a></h4>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// ghostring-ebpf/src/probes.rs - Updated sys_enter_execve</span>
+
+<span class="k">use</span><span class="w"> </span><span class="n">ghostring_common</span><span class="p">::{</span><span class="n">ExecveEvent</span><span class="p">,</span><span class="w"> </span><span class="n">MAX_PATH_LEN</span><span class="p">};</span>
+
+<span class="c1">// Current: only command name</span>
+<span class="cp">#[tracepoint(xdp, </span><span class="s">&quot;sys_enter_execve&quot;</span><span class="cp">)]</span>
+<span class="k">pub</span><span class="w"> </span><span class="k">fn</span><span class="w"> </span><span class="nf">sys_enter_execve</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span><span class="w"> </span><span class="nc">TracepointContext</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="kt">u64</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">pid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">helpers</span><span class="p">::</span><span class="n">bpf_get_current_pid_tgid</span><span class="p">()</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">u32</span><span class="p">;</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">uid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">helpers</span><span class="p">::</span><span class="n">bpf_get_current_uid_gid</span><span class="p">()</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">u32</span><span class="p">;</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">timestamp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">helpers</span><span class="p">::</span><span class="n">bpf_ktime_get_ns</span><span class="p">();</span>
+
+<span class="w">    </span><span class="c1">// Old: just command (16 bytes, truncated)</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">command</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="kt">u8</span><span class="p">;</span><span class="w"> </span><span class="mi">16</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="mi">16</span><span class="p">];</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">comm_len</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">helpers</span><span class="p">::</span><span class="n">bpf_get_current_comm</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span><span class="w"> </span><span class="n">command</span><span class="p">,</span><span class="w"> </span><span class="mi">16</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// NEW: full path via bpf_probe_read_user_str</span>
+<span class="w">    </span><span class="c1">// Requires: GPLv3 license, kernel 5.8+ with BTF</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">path_buf</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="kt">u8</span><span class="p">;</span><span class="w"> </span><span class="mi">256</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="mi">256</span><span class="p">];</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">path_len</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">helpers</span><span class="p">::</span><span class="n">bpf_probe_read_user_str</span><span class="p">(</span>
+<span class="w">        </span><span class="n">path_buf</span><span class="p">.</span><span class="n">as_mut_ptr</span><span class="p">()</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="o">*</span><span class="k">mut</span><span class="w"> </span><span class="n">c_void</span><span class="p">,</span>
+<span class="w">        </span><span class="mi">256</span><span class="p">,</span>
+<span class="w">        </span><span class="n">ctx</span><span class="p">.</span><span class="n">args</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="o">*</span><span class="k">const</span><span class="w"> </span><span class="n">c_void</span><span class="p">,</span><span class="w">  </span><span class="c1">// filename arg from execve</span>
+<span class="w">    </span><span class="p">);</span>
+
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">event</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ExecveEvent</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">pid</span><span class="p">,</span>
+<span class="w">        </span><span class="n">ppid</span><span class="p">:</span><span class="w"> </span><span class="cm">/* from context */</span><span class="p">,</span>
+<span class="w">        </span><span class="n">uid</span><span class="p">,</span>
+<span class="w">        </span><span class="n">gid</span><span class="p">:</span><span class="w"> </span><span class="cm">/* from context */</span><span class="p">,</span>
+<span class="w">        </span><span class="n">flags</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">        </span><span class="n">timestamp</span><span class="p">,</span>
+<span class="w">        </span><span class="c1">// Keep command for backward compat, add path</span>
+<span class="w">        </span><span class="n">command</span><span class="p">,</span><span class="w">  </span>
+<span class="w">        </span><span class="c1">// NOTE: Need to extend ExecveEvent with path field</span>
+<span class="w">    </span><span class="p">};</span>
+
+<span class="w">    </span><span class="c1">// Push to ring buffer</span>
+<span class="w">    </span><span class="n">PERF_EVENTS</span><span class="p">.</span><span class="n">output</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span><span class="w"> </span><span class="n">cpu</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">event</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="o">*</span><span class="k">const</span><span class="w"> </span><span class="n">_</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="o">*</span><span class="k">mut</span><span class="w"> </span><span class="n">_</span><span class="p">);</span>
+
+<span class="w">    </span><span class="mi">0</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h4 id="struct-extension">Struct Extension <a href="#struct-extension" class="heading-anchor" aria-label="Permalink to Struct Extension">#</a></h4>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// ghostring-common/src/lib.rs - Extended event struct</span>
+
+<span class="sd">/// Maximum path length constant</span>
+<span class="k">const</span><span class="w"> </span><span class="n">MAX_PATH_LEN</span><span class="p">:</span><span class="w"> </span><span class="kt">usize</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">256</span><span class="p">;</span>
+
+<span class="c1">// Extended execve event with full path</span>
+<span class="cp">#[repr(C)]</span>
+<span class="k">pub</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">ExecveEventExtended</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="sd">/// Core fields (backward compatible)</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">pid</span><span class="p">:</span><span class="w"> </span><span class="kt">u32</span><span class="p">,</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">ppid</span><span class="p">:</span><span class="w"> </span><span class="kt">u32</span><span class="p">,</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">uid</span><span class="p">:</span><span class="w"> </span><span class="kt">u32</span><span class="p">,</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">gid</span><span class="p">:</span><span class="w"> </span><span class="kt">u32</span><span class="p">,</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">flags</span><span class="p">:</span><span class="w"> </span><span class="kt">u64</span><span class="p">,</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">timestamp</span><span class="p">:</span><span class="w"> </span><span class="kt">u64</span><span class="p">,</span>
+<span class="w">    </span><span class="sd">/// Truncated command name (16 bytes, for backward compat)</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">command</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="kt">u8</span><span class="p">;</span><span class="w"> </span><span class="mi">16</span><span class="p">],</span>
+<span class="w">    </span><span class="sd">/// Full filesystem path (256 bytes, roadmap feature)</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">path</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="kt">u8</span><span class="p">;</span><span class="w"> </span><span class="mi">256</span><span class="p">],</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<p><strong>Size</strong>: 16 + 16 + 256 + 4 + 4 + 4 + 4 + 8 + 8 = <strong>284 bytes</strong> (was 40 bytes)</p>
+<h4 id="compatibility-considerations">Compatibility Considerations <a href="#compatibility-considerations" class="heading-anchor" aria-label="Permalink to Compatibility Considerations">#</a></h4>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Impact</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Binary compatibility</strong></td>
+<td>Struct size changes from 40 → 284</td>
+<td>Major version bump (0.x.y → 1.0.0)</td>
+</tr>
+<tr>
+<td><strong>Downstream consumers</strong></td>
+<td>Need to parse new fields</td>
+<td>Provide backward-compatible wrapper</td>
+</tr>
+<tr>
+<td><strong>Buffer sizes in user daemon</strong></td>
+<td>Increase from 40 to 284 bytes per event</td>
+<td>Update polling code</td>
+</tr>
+<tr>
+<td><strong>Perf buffer capacity</strong></td>
+<td>Fewer events fit per buffer</td>
+<td>Increase <code>max_entries</code> in map definition</td>
+</tr>
+<tr>
+<td><strong>Co-existence</strong></td>
+<td>Old and new daemons can't share same buffers</td>
+<td>Version field in event struct</td>
+</tr>
+</tbody>
+</table></div>
+<h4 id="backward-compatibility-strategy">Backward Compatibility Strategy <a href="#backward-compatibility-strategy" class="heading-anchor" aria-label="Permalink to Backward Compatibility Strategy">#</a></h4>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="sd">/// Versioned event struct for co-existence</span>
+<span class="cp">#[repr(C)]</span>
+<span class="k">pub</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">ExecveEventV1</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="sd">/// Version field (for future-proofing)</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">version</span><span class="p">:</span><span class="w"> </span><span class="kt">u16</span><span class="p">,</span>
+
+<span class="w">    </span><span class="sd">/// Core fields</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">pid</span><span class="p">:</span><span class="w"> </span><span class="kt">u32</span><span class="p">,</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">ppid</span><span class="p">:</span><span class="w"> </span><span class="kt">u32</span><span class="p">,</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">uid</span><span class="p">:</span><span class="w"> </span><span class="kt">u32</span><span class="p">,</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">gid</span><span class="p">:</span><span class="w"> </span><span class="kt">u32</span><span class="p">,</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">flags</span><span class="p">:</span><span class="w"> </span><span class="kt">u64</span><span class="p">,</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">timestamp</span><span class="p">:</span><span class="w"> </span><span class="kt">u64</span><span class="p">,</span>
+
+<span class="w">    </span><span class="sd">/// Command name (16 bytes, always present)</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">command</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="kt">u8</span><span class="p">;</span><span class="w"> </span><span class="mi">16</span><span class="p">],</span>
+
+<span class="w">    </span><span class="sd">/// Full path (256 bytes, v1+ feature)</span>
+<span class="w">    </span><span class="cp">#[cfg(feature = </span><span class="s">&quot;path_extraction&quot;</span><span class="cp">)]</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">path</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="kt">u8</span><span class="p">;</span><span class="w"> </span><span class="mi">256</span><span class="p">],</span>
+
+<span class="w">    </span><span class="sd">/// Padding for future growth</span>
+<span class="w">    </span><span class="cp">#[cfg(not(feature = </span><span class="s">&quot;path_extraction&quot;</span><span class="cp">))]</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">_reserved</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="kt">u8</span><span class="p">;</span><span class="w"> </span><span class="mi">256</span><span class="p">],</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h4 id="user-space-daemon-updates">User-Space Daemon Updates <a href="#user-space-daemon-updates" class="heading-anchor" aria-label="Permalink to User-Space Daemon Updates">#</a></h4>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// ghostring/src/events.rs - Updated event handling</span>
+
+<span class="k">fn</span><span class="w"> </span><span class="nf">handle_execve_event</span><span class="p">(</span><span class="n">raw</span><span class="p">:</span><span class="w"> </span><span class="kp">&amp;</span><span class="p">[</span><span class="kt">u8</span><span class="p">])</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Check version field first</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">event</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">unsafe</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">std</span><span class="p">::</span><span class="n">ptr</span><span class="p">::</span><span class="n">read_unaligned</span><span class="p">(</span><span class="n">raw</span><span class="p">.</span><span class="n">as_ptr</span><span class="p">()</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="o">*</span><span class="k">const</span><span class="w"> </span><span class="n">ExecveEventV1</span><span class="p">)</span>
+<span class="w">    </span><span class="p">};</span>
+
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">cmd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">String</span><span class="p">::</span><span class="n">from_utf8_lossy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">event</span><span class="p">.</span><span class="n">command</span><span class="p">[</span><span class="o">..</span><span class="p">])</span>
+<span class="w">        </span><span class="p">.</span><span class="n">trim_end_matches</span><span class="p">(</span><span class="sc">&#39;\0&#39;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// New: check if path extraction enabled</span>
+<span class="w">    </span><span class="cp">#[cfg(feature = </span><span class="s">&quot;path_extraction&quot;</span><span class="cp">)]</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">path_str</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">String</span><span class="p">::</span><span class="n">from_utf8_lossy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">event</span><span class="p">.</span><span class="n">path</span><span class="p">[</span><span class="o">..</span><span class="p">])</span>
+<span class="w">            </span><span class="p">.</span><span class="n">trim_end_matches</span><span class="p">(</span><span class="sc">&#39;\0&#39;</span><span class="p">);</span>
+<span class="w">        </span><span class="c1">// Only non-empty path indicates v1+ struct</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">!</span><span class="n">path</span><span class="p">.</span><span class="n">is_empty</span><span class="p">()</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">path</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s">&quot;.&quot;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="nb">Some</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+<span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="nb">None</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">};</span>
+
+<span class="w">    </span><span class="c1">// Log with whatever information available</span>
+<span class="w">    </span><span class="n">log</span><span class="p">::</span><span class="n">info</span><span class="o">!</span><span class="p">(</span>
+<span class="w">        </span><span class="s">&quot;execve: pid={} uid={} cmd={} path={:?}&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="n">event</span><span class="p">.</span><span class="n">pid</span><span class="p">,</span>
+<span class="w">        </span><span class="n">event</span><span class="p">.</span><span class="n">uid</span><span class="p">,</span>
+<span class="w">        </span><span class="n">cmd</span><span class="p">,</span>
+<span class="w">        </span><span class="n">path</span>
+<span class="w">    </span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h4 id="performance-impact">Performance Impact <a href="#performance-impact" class="heading-anchor" aria-label="Permalink to Performance Impact">#</a></h4>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Before (command only)</th>
+<th>After (with path)</th>
+<th>Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Struct size</strong></td>
+<td>40 bytes</td>
+<td>284 bytes</td>
+<td>+610%</td>
+</tr>
+<tr>
+<td><strong>Perf buffer capacity</strong></td>
+<td>More events fit</td>
+<td>Fewer events fit</td>
+<td>↓</td>
+</tr>
+<tr>
+<td><strong>eBPF execution time</strong></td>
+<td>~1-2 μs</td>
+<td>~2-5 μs</td>
+<td>+2-3x</td>
+</tr>
+<tr>
+<td><strong>Memory overhead per event</strong></td>
+<td>minimal</td>
+<td>~256B extra</td>
+<td>Significant</td>
+</tr>
+<tr>
+<td><strong>Network/SIEM bandwidth</strong></td>
+<td>Lower</td>
+<td>Higher</td>
+<td>+610%</td>
+</tr>
+<tr>
+<td><strong>Disk storage (if logged)</strong></td>
+<td>Less</td>
+<td>More</td>
+<td>+610%</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Trade-off</strong>: Full path extraction significantly increases storage/communication overhead but provides critical security forensic data.</p>
+<h4 id="kernel-version-requirements">Kernel Version Requirements <a href="#kernel-version-requirements" class="heading-anchor" aria-label="Permalink to Kernel Version Requirements">#</a></h4>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Kernel Version</th>
+<th><code>bpf_probe_read_user_str</code> Support</th>
+<th>GhostRing Support</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>4.14 and earlier</strong></td>
+<td>Not available</td>
+<td>❌</td>
+</tr>
+<tr>
+<td><strong>4.15 - 5.7</strong></td>
+<td>Available but limited</td>
+<td>⚠️ Partial</td>
+</tr>
+<tr>
+<td><strong>5.8 - 5.15</strong></td>
+<td>Fully available, recommended</td>
+<td>✅ <strong>Target</strong></td>
+</tr>
+<tr>
+<td><strong>5.16 - 6.1</strong></td>
+<td>Fully available, enhanced</td>
+<td>✅ Supported</td>
+</tr>
+<tr>
+<td><strong>6.2+</strong></td>
+<td>Latest, all features</td>
+<td>✅ Supported</td>
+</tr>
+</tbody>
+</table></div>
+<h4 id="implementation-checklist">Implementation Checklist <a href="#implementation-checklist" class="heading-anchor" aria-label="Permalink to Implementation Checklist">#</a></h4>
+<ul>
+<li><span class="task-item unchecked"><span class="task-box"></span> Add <code>MAX_PATH_LEN</code> constant to <code>ghostring-common</code></span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Extend <code>ExecveEvent</code> with <code>path[256]</code> field (or new struct)</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Update <code>build.rs</code> to ensure GPLv3 license (already required)</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Modify eBPF probe to call <code>bpf_probe_read_user_str</code></span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Update user-daemon polling to handle larger struct</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Add backward compatibility version field</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Bump crate version (major for breaking change)</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Update documentation (<code>docs/</code>)</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Test on target kernel (5.8+)</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Benchmark performance impact</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Add roadmap checkbox <code>[x]</code></span></li>
+</ul>
+<hr />
+<h2 id="feature-2-network-socket-observability-tcp_connect-kprobes">Feature 2: Network Socket Observability (tcp_connect kprobes) <a href="#feature-2-network-socket-observability-tcp_connect-kprobes" class="heading-anchor" aria-label="Permalink to Feature 2: Network Socket Observability (tcp_connect kprobes)">#</a></h2>
+<h3 id="roadmap-overview">Roadmap Overview <a href="#roadmap-overview" class="heading-anchor" aria-label="Permalink to Roadmap Overview">#</a></h3>
+<p>Attach kprobes to <code>tcp_connect</code> kernel function to monitor outbound network connections, enabling detection of:
+- Reverse-shell attempts
+- Unauthorized egress connections
+- Command-and-control (C2) communication
+- Data exfiltration via network</p>
+<h3 id="kprobe-attachment-points">kprobe Attachment Points <a href="#kprobe-attachment-points" class="heading-anchor" aria-label="Permalink to kprobe Attachment Points">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Probe Point</th>
+<th>Function</th>
+<th>Arguments Available</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Entry</strong></td>
+<td><code>tcp_connect</code></td>
+<td><code>struct sock *sk, struct sockaddr *uaddr, int addrlen</code></td>
+</tr>
+<tr>
+<td><strong>Return</strong></td>
+<td><code>tcp_connect</code></td>
+<td>Return value (<code>int</code>): 0 success, negative error</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="ebpf-program-design">eBPF Program Design <a href="#ebpf-program-design" class="heading-anchor" aria-label="Permalink to eBPF Program Design">#</a></h3>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// ghostring-ebpf/src/network.rs - tcp_connect kprobe</span>
+
+<span class="k">use</span><span class="w"> </span><span class="n">ghostring_common</span><span class="p">::{</span><span class="n">NetworkEvent</span><span class="p">,</span><span class="w"> </span><span class="n">EventType</span><span class="p">};</span>
+<span class="k">use</span><span class="w"> </span><span class="n">aya</span><span class="p">::</span><span class="n">bindings</span><span class="p">::</span><span class="n">socket_addr</span><span class="p">;</span>
+
+<span class="c1">// Entry probe at tcp_connect</span>
+<span class="cp">#[kprobe(entry = </span><span class="s">&quot;tcp_connect&quot;</span><span class="cp">)]</span>
+<span class="k">pub</span><span class="w"> </span><span class="k">fn</span><span class="w"> </span><span class="nf">tcp_connect_entry</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span><span class="w"> </span><span class="nc">KprobeContext</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="kt">u64</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Extract source and destination from context</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">sk</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ctx</span><span class="p">.</span><span class="n">arg</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span><span class="w">  </span><span class="c1">// struct sock *</span>
+
+<span class="w">    </span><span class="c1">// Get process info attached to this socket</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">pid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">helpers</span><span class="p">::</span><span class="n">bpf_get_current_pid_tgid</span><span class="p">()</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">u32</span><span class="p">;</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">uid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">helpers</span><span class="p">::</span><span class="n">bpf_get_current_uid_gid</span><span class="p">()</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">u32</span><span class="p">;</span>
+
+<span class="w">    </span><span class="c1">// Read socket state</span>
+<span class="w">    </span><span class="c1">// ... (complex, requires BTF or hardcoded offsets)</span>
+
+<span class="w">    </span><span class="c1">// Extract destination address if available</span>
+<span class="w">    </span><span class="c1">// ctx.arg(1) = struct sockaddr *uaddr</span>
+<span class="w">    </span><span class="c1">// ctx.arg(2) = int addrlen</span>
+
+<span class="w">    </span><span class="c1">// Create event (only if we can extract sufficient info)</span>
+<span class="w">    </span><span class="c1">// NetworkEvent { ... }</span>
+
+<span class="w">    </span><span class="mi">0</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h3 id="networkevent-struct">NetworkEvent Struct <a href="#networkevent-struct" class="heading-anchor" aria-label="Permalink to NetworkEvent Struct">#</a></h3>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="cp">#[repr(C)]</span>
+<span class="k">pub</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">NetworkEvent</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="sd">/// Process ID</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">pid</span><span class="p">:</span><span class="w"> </span><span class="kt">u32</span><span class="p">,</span>
+<span class="w">    </span><span class="sd">/// User ID</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">uid</span><span class="p">:</span><span class="w"> </span><span class="kt">u32</span><span class="p">,</span>
+<span class="w">    </span><span class="sd">/// Event type (connect, disconnect, etc.)</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">event_type</span><span class="p">:</span><span class="w"> </span><span class="kt">u8</span><span class="p">,</span>
+<span class="w">    </span><span class="sd">/// Protocol (TCP=1, UDP=2, etc.)</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">protocol</span><span class="p">:</span><span class="w"> </span><span class="kt">u8</span><span class="p">,</span>
+<span class="w">    </span><span class="sd">/// Source IP (4 bytes, network byte order)</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">src_ip</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="kt">u8</span><span class="p">;</span><span class="w"> </span><span class="mi">4</span><span class="p">],</span>
+<span class="w">    </span><span class="sd">/// Destination IP (4 bytes, network byte order)</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">dst_ip</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="kt">u8</span><span class="p">;</span><span class="w"> </span><span class="mi">4</span><span class="p">],</span>
+<span class="w">    </span><span class="sd">/// Source port (2 bytes, network byte order)</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">src_port</span><span class="p">:</span><span class="w"> </span><span class="kt">u16</span><span class="p">,</span>
+<span class="w">    </span><span class="sd">/// Destination port (2 bytes, network byte order)</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">dst_port</span><span class="p">:</span><span class="w"> </span><span class="kt">u16</span><span class="p">,</span>
+<span class="w">    </span><span class="sd">/// Timestamp</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">timestamp</span><span class="p">:</span><span class="w"> </span><span class="kt">u64</span><span class="p">,</span>
+<span class="w">    </span><span class="sd">/// Associated command (16 bytes, truncated)</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">command</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="kt">u8</span><span class="p">;</span><span class="w"> </span><span class="mi">16</span><span class="p">],</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<p><strong>Size</strong>: 4 + 4 + 1 + 1 + 4 + 4 + 2 + 2 + 8 + 16 = <strong>42 bytes</strong></p>
+<h3 id="kprobe-vs-tracepoint-for-network">kprobe vs tracepoint for Network <a href="#kprobe-vs-tracepoint-for-network" class="heading-anchor" aria-label="Permalink to kprobe vs tracepoint for Network">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>kprobe</th>
+<th>tracepoint</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Availability</strong></td>
+<td>Any kernel function</td>
+<td>Static points only</td>
+</tr>
+<tr>
+<td><strong>tcp_connect</strong></td>
+<td>✅ Available</td>
+<td>❌ No tracepoint</td>
+</tr>
+<tr>
+<td><strong>Overhead</strong></td>
+<td>Moderate (dynamic registration)</td>
+<td>Low (static)</td>
+</tr>
+<tr>
+<td><strong>Flexibility</strong></td>
+<td>Any function</td>
+<td>Limited to registered points</td>
+</tr>
+<tr>
+<td><strong>BTF support</strong></td>
+<td>✅ Yes</td>
+<td>✅ Yes</td>
+</tr>
+<tr>
+<td><strong>GhostRing use</strong></td>
+<td>✅ Roadmap feature</td>
+<td>N/A</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="address-extraction-challenges">Address Extraction Challenges <a href="#address-extraction-challenges" class="heading-anchor" aria-label="Permalink to Address Extraction Challenges">#</a></h3>
+<h4 id="extracting-sockaddr_in">Extracting sockaddr_in <a href="#extracting-sockaddr_in" class="heading-anchor" aria-label="Permalink to Extracting sockaddr_in">#</a></h4>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// Simplified: reading user-space address struct from kernel</span>
+
+<span class="k">use</span><span class="w"> </span><span class="n">aya</span><span class="p">::</span><span class="n">helpers</span><span class="p">::</span><span class="n">bpf_probe_read</span><span class="p">;</span>
+
+<span class="c1">// Read sockaddr_in from kernel space</span>
+<span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">sa</span><span class="p">:</span><span class="w"> </span><span class="nc">socket_addr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">unsafe</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">std</span><span class="p">::</span><span class="n">mem</span><span class="p">::</span><span class="n">zeroed</span><span class="p">()</span>
+<span class="p">};</span>
+
+<span class="c1">// Read from user space using BTF-verified read</span>
+<span class="kd">let</span><span class="w"> </span><span class="n">ret</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bpf_probe_read</span><span class="p">(</span>
+<span class="w">    </span><span class="o">&amp;</span><span class="k">mut</span><span class="w"> </span><span class="n">sa</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="o">*</span><span class="k">mut</span><span class="w"> </span><span class="n">socket_addr</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="o">*</span><span class="k">mut</span><span class="w"> </span><span class="n">c_void</span><span class="p">,</span>
+<span class="w">    </span><span class="n">std</span><span class="p">::</span><span class="n">mem</span><span class="p">::</span><span class="n">size_of</span><span class="p">::</span><span class="o">&lt;</span><span class="n">socket_addr</span><span class="o">&gt;</span><span class="p">(),</span>
+<span class="w">    </span><span class="n">ctx</span><span class="p">.</span><span class="n">arg</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="o">*</span><span class="k">const</span><span class="w"> </span><span class="n">c_void</span><span class="p">,</span><span class="w">  </span><span class="c1">// uaddr arg</span>
+<span class="p">);</span>
+
+<span class="k">if</span><span class="w"> </span><span class="n">ret</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Success - sa now contains address info</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">ip</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sa</span><span class="p">.</span><span class="n">sa_data</span><span class="p">[</span><span class="mi">2</span><span class="o">..</span><span class="mi">6</span><span class="p">];</span><span class="w">  </span><span class="c1">// IP bytes (AF_INET)</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kt">u16</span><span class="p">::</span><span class="n">from_be_bytes</span><span class="p">([</span><span class="n">sa</span><span class="p">.</span><span class="n">sa_data</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="w"> </span><span class="n">sa</span><span class="p">.</span><span class="n">sa_data</span><span class="p">[</span><span class="mi">1</span><span class="p">]]);</span><span class="w">  </span><span class="c1">// Port</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h4 id="challenges">Challenges <a href="#challenges" class="heading-anchor" aria-label="Permalink to Challenges">#</a></h4>
+<ol>
+<li><strong>Address family detection</strong>: Must check <code>sa_family</code> field (AF_INET=2, AF_INET6=10)</li>
+<li><strong>User-space read</strong>: <code>bpf_probe_read_user</code> required for user memory</li>
+<li><strong>IPv4 vs IPv6</strong>: Different struct sizes (4 vs 16 bytes)</li>
+<li><strong>Port byte order</strong>: Network byte order (big-endian) vs host</li>
+</ol>
+<h4 id="btf-powered-extraction">BTF-Powered Extraction <a href="#btf-powered-extraction" class="heading-anchor" aria-label="Permalink to BTF-Powered Extraction">#</a></h4>
+<p>With BTF, field access by name:</p>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// Given BTF-resolved struct socket or tcp_sock</span>
+<span class="c1">// Access fields by name instead of offset</span>
+
+<span class="c1">// Example (conceptual - exact fields depend on kernel version):</span>
+<span class="kd">let</span><span class="w"> </span><span class="n">family</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">btf_resolved_field</span><span class="p">(</span><span class="o">&amp;</span><span class="n">sk</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;family&quot;</span><span class="p">);</span><span class="w">  </span><span class="c1">// AF_INET or AF_INET6</span>
+<span class="kd">let</span><span class="w"> </span><span class="n">port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">btf_resolved_field</span><span class="p">(</span><span class="o">&amp;</span><span class="n">sk</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;__port&quot;</span><span class="p">);</span><span class="w">   </span><span class="c1">// Port, byte order varies</span>
+<span class="kd">let</span><span class="w"> </span><span class="n">addr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">btf_resolved_field</span><span class="p">(</span><span class="o">&amp;</span><span class="n">sk</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;remote_addr&quot;</span><span class="p">);</span><span class="w">  </span><span class="c1">// Depending on kernel</span>
+</code></pre>
+</div>
+<h3 id="filtering-and-classification">Filtering and Classification <a href="#filtering-and-classification" class="heading-anchor" aria-label="Permalink to Filtering and Classification">#</a></h3>
+<h4 id="event-type-enums">Event Type Enums <a href="#event-type-enums" class="heading-anchor" aria-label="Permalink to Event Type Enums">#</a></h4>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="cp">#[derive(Clone, Copy, Debug, PartialEq, Eq)]</span>
+<span class="cp">#[repr(u8)]</span>
+<span class="k">pub</span><span class="w"> </span><span class="k">enum</span><span class="w"> </span><span class="nc">NetworkEventType</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">TcpConnectIn</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x01</span><span class="p">,</span><span class="w">   </span><span class="c1">// Outbound TCP connection (initiatior)</span>
+<span class="w">    </span><span class="n">TcpConnectOut</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x02</span><span class="p">,</span><span class="w">  </span><span class="c1">// Inbound TCP connection (responder)</span>
+<span class="w">    </span><span class="n">TcpDisconnect</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x03</span><span class="p">,</span><span class="w">  </span><span class="c1">// TCP close/termination</span>
+<span class="w">    </span><span class="n">UdpSend</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x04</span><span class="p">,</span><span class="w">        </span><span class="c1">// UDP sendto/sendmsg</span>
+<span class="w">    </span><span class="n">UdpRecv</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x05</span><span class="p">,</span><span class="w">        </span><span class="c1">// UDP recvfrom/recvmsg</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h4 id="classification-logic">Classification Logic <a href="#classification-logic" class="heading-anchor" aria-label="Permalink to Classification Logic">#</a></h4>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="k">fn</span><span class="w"> </span><span class="nf">classify_network_event</span><span class="p">(</span>
+<span class="w">    </span><span class="n">event_type</span><span class="p">:</span><span class="w"> </span><span class="nc">NetworkEventType</span><span class="p">,</span>
+<span class="w">    </span><span class="n">dst_port</span><span class="p">:</span><span class="w"> </span><span class="kt">u16</span><span class="p">,</span>
+<span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nb">String</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Well-known ports that might indicate suspicious activity</span>
+<span class="w">    </span><span class="k">match</span><span class="w"> </span><span class="n">dst_port</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="mi">22</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s">&quot;SSH connection (potential C2 or admin access)&quot;</span><span class="p">.</span><span class="n">to_string</span><span class="p">(),</span>
+<span class="w">        </span><span class="mi">443</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s">&quot;HTTPS (normal web, but check for unusual patterns)&quot;</span><span class="p">.</span><span class="n">to_string</span><span class="p">(),</span>
+<span class="w">        </span><span class="mi">80</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s">&quot;HTTP (unencrypted web traffic)&quot;</span><span class="p">.</span><span class="n">to_string</span><span class="p">(),</span>
+<span class="w">        </span><span class="mi">23</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s">&quot;Telnet (unencrypted, often suspicious)&quot;</span><span class="p">.</span><span class="n">to_string</span><span class="p">(),</span>
+<span class="w">        </span><span class="mi">4444</span><span class="o">..=</span><span class="mi">65535</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s">&quot;High port (potential reverse shell/C2)&quot;</span><span class="p">.</span><span class="n">to_string</span><span class="p">(),</span>
+<span class="w">        </span><span class="n">_</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s">&quot;Generic connection&quot;</span><span class="p">.</span><span class="n">to_string</span><span class="p">(),</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h3 id="alerting-rules">Alerting Rules <a href="#alerting-rules" class="heading-anchor" aria-label="Permalink to Alerting Rules">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Condition</th>
+<th>Alert Level</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Connection to known C2 port</strong> (e.g., 4444, 1337, 31337)</td>
+<td><strong>HIGH</strong></td>
+<td>Potential reverse shell</td>
+</tr>
+<tr>
+<td><strong>Outbound from privileged port</strong> (&lt;1024) by unprivileged process</td>
+<td><strong>MEDIUM</strong></td>
+<td>Process shouldn't have privileged ports</td>
+</tr>
+<tr>
+<td><strong>Connection to Tor exit nodes</strong></td>
+<td><strong>INFO</strong></td>
+<td>Anonymity service, monitor</td>
+</tr>
+<tr>
+<td><strong>DNS lookups followed by connection</strong></td>
+<td><strong>MEDIUM</strong></td>
+<td>Potential data exfiltration pattern</td>
+</tr>
+<tr>
+<td><strong>Multiple connections within 10s</strong></td>
+<td><strong>HIGH</strong></td>
+<td>Potential scanning or brute force</td>
+</tr>
+<tr>
+<td><strong>Connection to internal IP from external</strong></td>
+<td><strong>HIGH</strong></td>
+<td>Unusual egress pattern</td>
+</tr>
+<tr>
+<td><strong>All other connections</strong></td>
+<td><strong>LOW</strong></td>
+<td>Informational logging</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="performance-considerations">Performance Considerations <a href="#performance-considerations" class="heading-anchor" aria-label="Permalink to Performance Considerations">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Estimate</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>kprobe registration overhead</strong></td>
+<td>~1-3 μs per probe</td>
+<td>One-time at load</td>
+</tr>
+<tr>
+<td><strong>kprobe firing frequency</strong></td>
+<td>Depends on traffic</td>
+<td>~1K-1M events/sec typical</td>
+</tr>
+<tr>
+<td><strong>eBPF program execution</strong></td>
+<td>~2-5 μs per probe</td>
+<td>Includes data extraction</td>
+</tr>
+<tr>
+<td><strong>Ring buffer write</strong></td>
+<td>~1-3 μs</td>
+<td>Per event</td>
+</tr>
+<tr>
+<td><strong>User-space poll overhead</strong></td>
+<td>~50-200 μs per poll cycle</td>
+<td>Depends on batch size</td>
+</tr>
+<tr>
+<td><strong>Total CPU overhead</strong></td>
+<td>&lt;5% at moderate traffic</td>
+<td>Goal for production use</td>
+</tr>
+<tr>
+<td><strong>Memory overhead per event</strong></td>
+<td>42 bytes (NetworkEvent)</td>
+<td>+perf buffer</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="kernel-version-support">Kernel Version Support <a href="#kernel-version-support" class="heading-anchor" aria-label="Permalink to Kernel Version Support">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Kernel Version</th>
+<th>kprobe Support</th>
+<th>BTF Support</th>
+<th>GhostRing Support</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>4.15</strong></td>
+<td>✅</td>
+<td>✅ (limited)</td>
+<td>⚠️ Early support</td>
+</tr>
+<tr>
+<td><strong>4.19</strong></td>
+<td>✅</td>
+<td>✅ improved</td>
+<td>⚠️</td>
+</tr>
+<tr>
+<td><strong>5.4</strong></td>
+<td>✅</td>
+<td>✅ good</td>
+<td>✅ Supported</td>
+</tr>
+<tr>
+<td><strong>5.10</strong></td>
+<td>✅</td>
+<td>✅ better BTF</td>
+<td>✅ Recommended</td>
+</tr>
+<tr>
+<td><strong>5.15</strong></td>
+<td>✅</td>
+<td>✅ strong BTF</td>
+<td>✅ <strong>Target</strong></td>
+</tr>
+<tr>
+<td><strong>6.1+</strong></td>
+<td>✅</td>
+<td>✅ full</td>
+<td>✅ Supported</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="implementation-checklist-network-feature">Implementation Checklist - Network Feature <a href="#implementation-checklist-network-feature" class="heading-anchor" aria-label="Permalink to Implementation Checklist - Network Feature">#</a></h3>
+<ul>
+<li><span class="task-item unchecked"><span class="task-box"></span> Add <code>NetworkEvent</code> struct to <code>ghostring-common</code></span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Add <code>NetworkEventType</code> enum to <code>ghostring-common</code></span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Create <code>ghostring-ebpf/src/network.rs</code> with kprobe attachment</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Write <code>tcp_connect</code> entry/return probe logic</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Extract source/dest IP and port from socket context</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Add BTF-powered address reading (if kernel supports)</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Update <code>build.rs</code> license (already GPLv3)</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Modify user-daemon to handle <code>NetworkEvent</code> type</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Implement classification/alerting logic</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Add CLI flags for filter configuration</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Benchmark performance on target workloads</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Test with various connection types (tcp, udp)</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Update roadmap checkboxes</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Document in <code>docs/</code></span></li>
+</ul>
+<hr />
+<h2 id="feature-3-file-integrity-monitoring-sys_enter_openat">Feature 3: File Integrity Monitoring (sys_enter_openat) <a href="#feature-3-file-integrity-monitoring-sys_enter_openat" class="heading-anchor" aria-label="Permalink to Feature 3: File Integrity Monitoring (sys_enter_openat)">#</a></h2>
+<h3 id="roadmap-overview_1">Roadmap Overview <a href="#roadmap-overview_1" class="heading-anchor" aria-label="Permalink to Roadmap Overview">#</a></h3>
+<p>Instrument <code>sys_enter_openat</code> to track file access targeting sensitive system configuration files (<code>/etc/shadow</code>, <code>/etc/passwd</code>, SSH authorized keys, etc.).</p>
+<h3 id="probe-attachment">Probe Attachment <a href="#probe-attachment" class="heading-anchor" aria-label="Permalink to Probe Attachment">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Probe Point</th>
+<th>Function</th>
+<th>Arguments</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Entry</strong></td>
+<td><code>sys_enter_openat</code></td>
+<td><code>int olddfd, const char __user *filename, int flags, int mode</code></td>
+</tr>
+<tr>
+<td><strong>Return</strong></td>
+<td><code>sys_openat</code></td>
+<td><code>return_value</code> (= fd or negative error)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="sys_enter_openat-arguments">sys_enter_openat Arguments <a href="#sys_enter_openat-arguments" class="heading-anchor" aria-label="Permalink to sys_enter_openat Arguments">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>olddfd</code></td>
+<td><code>int</code></td>
+<td>Old directory fd (AT_FDCWD = -100)</td>
+</tr>
+<tr>
+<td><code>filename</code></td>
+<td><code>const char __user *</code></td>
+<td>User-space string (file path)</td>
+</tr>
+<tr>
+<td><code>flags</code></td>
+<td><code>int</code></td>
+<td>Open flags (O_RDONLY, O_WRONLY, O_RDWR, etc.)</td>
+</tr>
+<tr>
+<td><code>mode</code></td>
+<td><code>int</code></td>
+<td>File mode (for creation)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="ebpf-program-design_1">eBPF Program Design <a href="#ebpf-program-design_1" class="heading-anchor" aria-label="Permalink to eBPF Program Design">#</a></h3>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// ghostring-ebpf/src/file_monitor.rs - sys_enter_openat probe</span>
+
+<span class="k">use</span><span class="w"> </span><span class="n">ghostring_common</span><span class="p">::{</span><span class="n">FileEvent</span><span class="p">,</span><span class="w"> </span><span class="n">FileEventType</span><span class="p">,</span><span class="w"> </span><span class="n">FileFlags</span><span class="p">};</span>
+<span class="k">use</span><span class="w"> </span><span class="n">aya</span><span class="p">::</span><span class="n">helpers</span><span class="p">::</span><span class="n">bpf_probe_read_user_str</span><span class="p">;</span>
+
+<span class="cp">#[tracepoint(xdp, </span><span class="s">&quot;sys_enter_openat&quot;</span><span class="cp">)]</span>
+<span class="k">pub</span><span class="w"> </span><span class="k">fn</span><span class="w"> </span><span class="nf">sys_enter_openat</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span><span class="w"> </span><span class="nc">TracepointContext</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="kt">u64</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">pid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">helpers</span><span class="p">::</span><span class="n">bpf_get_current_pid_tgid</span><span class="p">()</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">u32</span><span class="p">;</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">uid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">helpers</span><span class="p">::</span><span class="n">bpf_get_current_uid_gid</span><span class="p">()</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">u32</span><span class="p">;</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">timestamp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">helpers</span><span class="p">::</span><span class="n">bpf_ktime_get_ns</span><span class="p">();</span>
+
+<span class="w">    </span><span class="c1">// Read filename from user space</span>
+<span class="w">    </span><span class="c1">// ctx.args[1] = const char __user *filename</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">filename</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="kt">u8</span><span class="p">;</span><span class="w"> </span><span class="mi">256</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="mi">256</span><span class="p">];</span>
+
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">read_ret</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bpf_probe_read_user_str</span><span class="p">(</span>
+<span class="w">        </span><span class="n">filename</span><span class="p">.</span><span class="n">as_mut_ptr</span><span class="p">()</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="o">*</span><span class="k">mut</span><span class="w"> </span><span class="n">c_void</span><span class="p">,</span>
+<span class="w">        </span><span class="mi">256</span><span class="p">,</span>
+<span class="w">        </span><span class="n">ctx</span><span class="p">.</span><span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="o">*</span><span class="k">const</span><span class="w"> </span><span class="n">c_void</span><span class="p">,</span>
+<span class="w">    </span><span class="p">);</span>
+
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">file_str</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">read_ret</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nb">String</span><span class="p">::</span><span class="n">from_utf8_lossy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">filename</span><span class="p">[</span><span class="o">..</span><span class="n">read_ret</span><span class="p">.</span><span class="n">min</span><span class="p">(</span><span class="mi">255</span><span class="p">)])</span>
+<span class="w">            </span><span class="p">.</span><span class="n">trim_end_matches</span><span class="p">(</span><span class="sc">&#39;\0&#39;</span><span class="p">)</span>
+<span class="w">            </span><span class="p">.</span><span class="n">to_string</span><span class="p">()</span>
+<span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="s">&quot;&lt;read_failed&gt;&quot;</span><span class="p">.</span><span class="n">to_string</span><span class="p">()</span>
+<span class="w">    </span><span class="p">};</span>
+
+<span class="w">    </span><span class="c1">// Classify file path</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">event_type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">classify_file_path</span><span class="p">(</span><span class="o">&amp;</span><span class="n">file_str</span><span class="p">);</span>
+
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">flags</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ctx</span><span class="p">.</span><span class="n">args</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">u64</span><span class="p">;</span><span class="w">  </span><span class="c1">// flags argument</span>
+
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">event</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">FileEvent</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">pid</span><span class="p">,</span>
+<span class="w">        </span><span class="n">ppid</span><span class="p">:</span><span class="w"> </span><span class="cm">/* from context */</span><span class="p">,</span>
+<span class="w">        </span><span class="n">uid</span><span class="p">,</span>
+<span class="w">        </span><span class="n">gid</span><span class="p">:</span><span class="w"> </span><span class="cm">/* from context */</span><span class="p">,</span>
+<span class="w">        </span><span class="n">event_type</span><span class="p">,</span>
+<span class="w">        </span><span class="n">filename</span><span class="p">:</span><span class="w"> </span><span class="nc">file_str</span><span class="p">,</span>
+<span class="w">        </span><span class="n">flags</span><span class="p">,</span>
+<span class="w">        </span><span class="n">timestamp</span><span class="p">,</span>
+<span class="w">    </span><span class="p">};</span>
+
+<span class="w">    </span><span class="n">PERF_EVENTS</span><span class="p">.</span><span class="n">output</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span><span class="w"> </span><span class="n">cpu</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">event</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="o">*</span><span class="k">const</span><span class="w"> </span><span class="n">_</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="o">*</span><span class="k">mut</span><span class="w"> </span><span class="n">_</span><span class="p">);</span>
+
+<span class="w">    </span><span class="mi">0</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h3 id="fileevent-struct">FileEvent Struct <a href="#fileevent-struct" class="heading-anchor" aria-label="Permalink to FileEvent Struct">#</a></h3>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="cp">#[repr(C)]</span>
+<span class="k">pub</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">FileEvent</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="sd">/// Process ID</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">pid</span><span class="p">:</span><span class="w"> </span><span class="kt">u32</span><span class="p">,</span>
+<span class="w">    </span><span class="sd">/// Parent PID</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">ppid</span><span class="p">:</span><span class="w"> </span><span class="kt">u32</span><span class="p">,</span>
+<span class="w">    </span><span class="sd">/// User ID</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">uid</span><span class="p">:</span><span class="w"> </span><span class="kt">u32</span><span class="p">,</span>
+<span class="w">    </span><span class="sd">/// Group ID</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">gid</span><span class="p">:</span><span class="w"> </span><span class="kt">u32</span><span class="p">,</span>
+<span class="w">    </span><span class="sd">/// Event type (open, create, mkdir, etc.)</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">event_type</span><span class="p">:</span><span class="w"> </span><span class="kt">u8</span><span class="p">,</span>
+<span class="w">    </span><span class="sd">/// File path (256 bytes, may be truncated)</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">filename</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="kt">u8</span><span class="p">;</span><span class="w"> </span><span class="mi">256</span><span class="p">],</span>
+<span class="w">    </span><span class="sd">/// Open flags (O_RDONLY, etc.)</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">flags</span><span class="p">:</span><span class="w"> </span><span class="kt">u64</span><span class="p">,</span>
+<span class="w">    </span><span class="sd">/// Timestamp</span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">timestamp</span><span class="p">:</span><span class="w"> </span><span class="kt">u64</span><span class="p">,</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<p><strong>Size</strong>: 4 + 4 + 4 + 4 + 1 + 256 + 8 + 8 = <strong>287 bytes</strong></p>
+<h3 id="fileeventtype-enumeration">FileEventType Enumeration <a href="#fileeventtype-enumeration" class="heading-anchor" aria-label="Permalink to FileEventType Enumeration">#</a></h3>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="cp">#[derive(Clone, Copy, Debug, PartialEq, Eq)]</span>
+<span class="cp">#[repr(u8)]</span>
+<span class="k">pub</span><span class="w"> </span><span class="k">enum</span><span class="w"> </span><span class="nc">FileEventType</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">OpenRead</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x01</span><span class="p">,</span><span class="w">      </span><span class="c1">// O_RDONLY</span>
+<span class="w">    </span><span class="n">OpenWrite</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x02</span><span class="p">,</span><span class="w">     </span><span class="c1">// O_WRONLY</span>
+<span class="w">    </span><span class="n">OpenReadWrite</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x03</span><span class="p">,</span><span class="w"> </span><span class="c1">// O_RDWR</span>
+<span class="w">    </span><span class="n">Mkdir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x04</span><span class="p">,</span><span class="w">         </span><span class="c1">// Directory creation</span>
+<span class="w">    </span><span class="n">Mknod</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x05</span><span class="p">,</span><span class="w">         </span><span class="c1">// Device node creation</span>
+<span class="w">    </span><span class="n">Symlink</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x06</span><span class="p">,</span><span class="w">       </span><span class="c1">// Symbolic link creation</span>
+<span class="w">    </span><span class="n">Unlink</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x07</span><span class="p">,</span><span class="w">        </span><span class="c1">// File deletion</span>
+<span class="w">    </span><span class="n">Rename</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x08</span><span class="p">,</span><span class="w">        </span><span class="c1">// File renaming</span>
+<span class="w">    </span><span class="n">Chmod</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x09</span><span class="p">,</span><span class="w">         </span><span class="c1">// Permission change</span>
+<span class="w">    </span><span class="n">Chown</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x0A</span><span class="p">,</span><span class="w">         </span><span class="c1">// Owner change</span>
+<span class="w">    </span><span class="n">Truncate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x0B</span><span class="p">,</span><span class="w">      </span><span class="c1">// File truncation</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h3 id="sensitive-file-classification">Sensitive File Classification <a href="#sensitive-file-classification" class="heading-anchor" aria-label="Permalink to Sensitive File Classification">#</a></h3>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="sd">/// Sensitive paths that trigger enhanced monitoring</span>
+<span class="k">const</span><span class="w"> </span><span class="n">SENSITIVE_PATHS</span><span class="p">:</span><span class="w"> </span><span class="kp">&amp;</span><span class="p">[</span><span class="o">&amp;</span><span class="kt">str</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&amp;</span><span class="p">[</span>
+<span class="w">    </span><span class="s">&quot;/etc/shadow&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;/etc/gshadow&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;/etc/passwd&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;/etc/security/&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;/root/.ssh/authorized_keys&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;/root/.ssh/id_rsa&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;/root/.ssh/id_ecdsa&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;/root/.ssh/id_ed25519&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;/etc/sudoers&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;/etc/sudoers.d/&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;/var/db/sudo/&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;/etc/apparmor/*&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;/etc/selinux/&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;/etc/ssh/sshd_config&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;/boot/&quot;</span><span class="p">,</span><span class="w">               </span><span class="c1">// Boot configuration</span>
+<span class="w">    </span><span class="s">&quot;/kernel/&quot;</span><span class="p">,</span><span class="w">             </span><span class="c1">// Kernel parameters</span>
+<span class="p">];</span>
+
+<span class="k">fn</span><span class="w"> </span><span class="nf">is_sensitive_path</span><span class="p">(</span><span class="n">path</span><span class="p">:</span><span class="w"> </span><span class="kp">&amp;</span><span class="kt">str</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">SENSITIVE_PATHS</span><span class="p">.</span><span class="n">iter</span><span class="p">().</span><span class="n">any</span><span class="p">(</span><span class="o">|</span><span class="n">s</span><span class="o">|</span><span class="w"> </span><span class="n">path</span><span class="p">.</span><span class="n">starts_with</span><span class="p">(</span><span class="n">s</span><span class="p">))</span>
+<span class="p">}</span>
+
+<span class="k">fn</span><span class="w"> </span><span class="nf">classify_file_path</span><span class="p">(</span><span class="n">path</span><span class="p">:</span><span class="w"> </span><span class="kp">&amp;</span><span class="kt">str</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="kt">u8</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="n">is_sensitive_path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">FileEventType</span><span class="p">::</span><span class="n">OpenWrite</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">u8</span><span class="w">  </span><span class="c1">// or a sensitive flag</span>
+<span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Determine from flags and path type</span>
+<span class="w">        </span><span class="k">match</span><span class="w"> </span><span class="n">path</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">p</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">ends_with</span><span class="p">(</span><span class="s">&quot;/&quot;</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">FileEventType</span><span class="p">::</span><span class="n">Mkdir</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">u8</span><span class="p">,</span>
+<span class="w">            </span><span class="n">p</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">contains</span><span class="p">(</span><span class="s">&quot;.&quot;</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="n">p</span><span class="p">.</span><span class="n">contains</span><span class="p">(</span><span class="s">&quot;/&quot;</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">FileEventType</span><span class="p">::</span><span class="n">OpenRead</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">u8</span><span class="p">,</span>
+<span class="w">            </span><span class="n">_</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">FileEventType</span><span class="p">::</span><span class="n">OpenReadWrite</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">u8</span><span class="p">,</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h3 id="alert-prioritization">Alert Prioritization <a href="#alert-prioritization" class="heading-anchor" aria-label="Permalink to Alert Prioritization">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>File Type</th>
+<th>Event Type</th>
+<th>Alert Level</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/etc/shadow</code></td>
+<td>Any</td>
+<td><strong>CRITICAL</strong></td>
+<td>Password file modification</td>
+</tr>
+<tr>
+<td><code>/etc/passwd</code></td>
+<td>Any</td>
+<td><strong>CRITICAL</strong></td>
+<td>User account modification</td>
+</tr>
+<tr>
+<td><code>/root/.ssh/authorized_keys</code></td>
+<td>Write</td>
+<td><strong>HIGH</strong></td>
+<td>SSH key insertion (C2 setup)</td>
+</tr>
+<tr>
+<td><code>/etc/sudoers</code></td>
+<td>Write</td>
+<td><strong>HIGH</strong></td>
+<td>Privilege escalation</td>
+</tr>
+<tr>
+<td><code>/etc/ssh/sshd_config</code></td>
+<td>Write</td>
+<td><strong>HIGH</strong></td>
+<td>SSH server modification</td>
+</tr>
+<tr>
+<td><code>/boot/</code></td>
+<td>Any</td>
+<td><strong>MEDIUM</strong></td>
+<td>Boot integrity</td>
+</tr>
+<tr>
+<td><code>/etc/apparmor/*</code></td>
+<td>Write</td>
+<td><strong>MEDIUM</strong></td>
+<td>AppArmor profile change</td>
+</tr>
+<tr>
+<td>All other sensitive</td>
+<td>Any</td>
+<td><strong>LOW</strong></td>
+<td>Informational</td>
+</tr>
+<tr>
+<td>Non-sensitive</td>
+<td>Any</td>
+<td><strong>INFO</strong></td>
+<td>Logging only</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="integration-with-existing-event-pipeline">Integration with Existing Event Pipeline <a href="#integration-with-existing-event-pipeline" class="heading-anchor" aria-label="Permalink to Integration with Existing Event Pipeline">#</a></h3>
+<div class="code-block-container" data-lang="RUST">
+  <div class="code-block-header">
+    <div class="code-lang-tag">
+      <span class="code-icon"></span>
+      <span class="code-lang-name">RUST</span>
+    </div>
+    <button class="copy-code-button" type="button" aria-label="Copy code">
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span class="copy-feedback">Copied!</span>
+      <span class="copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="highlight-pre"><code><span class="c1">// In the user-daemon event handler, route FileEvent alongside ExecveEvent</span>
+
+<span class="k">enum</span><span class="w"> </span><span class="nc">Event</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">Execve</span><span class="p">(</span><span class="n">ExecveEvent</span><span class="p">),</span>
+<span class="w">    </span><span class="n">UidGid</span><span class="p">(</span><span class="n">UidGidEvent</span><span class="p">),</span>
+<span class="w">    </span><span class="n">Network</span><span class="p">(</span><span class="n">NetworkEvent</span><span class="p">),</span>
+<span class="w">    </span><span class="n">File</span><span class="p">(</span><span class="n">FileEvent</span><span class="p">),</span>
+<span class="w">    </span><span class="c1">// Future variants</span>
+<span class="p">}</span>
+
+<span class="k">impl</span><span class="w"> </span><span class="n">Event</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="sd">/// Check if event involves sensitive file</span>
+<span class="w">    </span><span class="k">fn</span><span class="w"> </span><span class="nf">is_sensitive</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">match</span><span class="w"> </span><span class="bp">self</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">Event</span><span class="p">::</span><span class="n">File</span><span class="p">(</span><span class="n">f</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="c1">// Check if path is in sensitive list</span>
+<span class="w">                </span><span class="kd">let</span><span class="w"> </span><span class="n">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">String</span><span class="p">::</span><span class="n">from_utf8_lossy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">f</span><span class="p">.</span><span class="n">filename</span><span class="p">[</span><span class="o">..</span><span class="p">])</span>
+<span class="w">                    </span><span class="p">.</span><span class="n">trim_end_matches</span><span class="p">(</span><span class="sc">&#39;\0&#39;</span><span class="p">);</span>
+<span class="w">                </span><span class="n">is_sensitive_path</span><span class="p">(</span><span class="o">&amp;</span><span class="n">path</span><span class="p">)</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">            </span><span class="n">_</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="sd">/// Get alert level for event</span>
+<span class="w">    </span><span class="k">fn</span><span class="w"> </span><span class="nf">alert_level</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="kp">&amp;</span><span class="o">&#39;</span><span class="nb">static</span><span class="w"> </span><span class="kt">str</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">match</span><span class="w"> </span><span class="bp">self</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">Event</span><span class="p">::</span><span class="n">File</span><span class="p">(</span><span class="n">f</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="kd">let</span><span class="w"> </span><span class="n">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">String</span><span class="p">::</span><span class="n">from_utf8_lossy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">f</span><span class="p">.</span><span class="n">filename</span><span class="p">[</span><span class="o">..</span><span class="p">])</span>
+<span class="w">                    </span><span class="p">.</span><span class="n">trim_end_matches</span><span class="p">(</span><span class="sc">&#39;\0&#39;</span><span class="p">);</span>
+<span class="w">                </span><span class="n">classify_sensitivity</span><span class="p">(</span><span class="o">&amp;</span><span class="n">path</span><span class="p">)</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">            </span><span class="n">_</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s">&quot;INFO&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<h3 id="performance-impact_1">Performance Impact <a href="#performance-impact_1" class="heading-anchor" aria-label="Permalink to Performance Impact">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Estimate</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Struct size</strong></td>
+<td>287 bytes</td>
+<td>Significant increase from ExecveEvent (40B)</td>
+</tr>
+<tr>
+<td><strong>eBPF overhead</strong></td>
+<td>~3-5 μs per openat</td>
+<td>Includes string read from user space</td>
+</tr>
+<tr>
+<td><strong>Kernel impact</strong></td>
+<td>&lt;3% CPU at moderate usage</td>
+<td>openat is common syscall</td>
+</tr>
+<tr>
+<td><strong>Buffer capacity</strong></td>
+<td>Reduced (larger events)</td>
+<td>Increase <code>max_entries</code></td>
+</tr>
+<tr>
+<td><strong>User-space parse</strong></td>
+<td>~5-10 μs per event</td>
+<td>String decoding overhead</td>
+</tr>
+<tr>
+<td><strong>Total storage increase</strong></td>
+<td>~600% more per event</td>
+<td>287B vs 40B</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="kernel-version-support_1">Kernel Version Support <a href="#kernel-version-support_1" class="heading-anchor" aria-label="Permalink to Kernel Version Support">#</a></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+<th>Kernel Version</th>
+<th>sys_openat Support</th>
+<th>BTF Support</th>
+<th>GhostRing Support</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>4.15</strong></td>
+<td>✅</td>
+<td>✅ limited</td>
+<td>⚠️</td>
+</tr>
+<tr>
+<td><strong>4.19</strong></td>
+<td>✅</td>
+<td>✅ improved</td>
+<td>⚠️</td>
+</tr>
+<tr>
+<td><strong>5.4</strong></td>
+<td>✅</td>
+<td>✅ good</td>
+<td>✅ Supported</td>
+</tr>
+<tr>
+<td><strong>5.10</strong></td>
+<td>✅</td>
+<td>✅ better</td>
+<td>✅ Recommended</td>
+</tr>
+<tr>
+<td><strong>5.15</strong></td>
+<td>✅</td>
+<td>✅ strong</td>
+<td>✅ <strong>Target</strong></td>
+</tr>
+<tr>
+<td><strong>6.1+</strong></td>
+<td>✅</td>
+<td>✅ full</td>
+<td>✅ Supported</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="implementation-checklist-file-monitoring">Implementation Checklist - File Monitoring <a href="#implementation-checklist-file-monitoring" class="heading-anchor" aria-label="Permalink to Implementation Checklist - File Monitoring">#</a></h3>
+<ul>
+<li><span class="task-item unchecked"><span class="task-box"></span> Add <code>FileEvent</code> struct to <code>ghostring-common</code></span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Add <code>FileEventType</code> enum to <code>ghostring-common</code></span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Add <code>FileFlags</code> bitflags helper</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Create <code>ghostring-ebpf/src/file_monitor.rs</code> with sys_enter_openat probe</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Write sensitive path classification logic</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Update user-daemon to handle <code>FileEvent</code> type</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Implement alert prioritization system</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Add CLI flags for sensitive path configuration</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Update <code>build.rs</code> license (already GPLv3)</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Bump crate versions as needed</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Update documentation (<code>docs/</code>)</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Test on target kernel (5.15+ recommended)</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Benchmark syscall overhead</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Add roadmap checkboxes</span></li>
+<li><span class="task-item unchecked"><span class="task-box"></span> Document in project docs</span></li>
+</ul>
+<h2 id="related-documentation">Related Documentation <a href="#related-documentation" class="heading-anchor" aria-label="Permalink to Related Documentation">#</a></h2>
+<ul>
+<li><a href="architecture-overview.html">Architecture Overview</a> — System architecture context and multi-crate roadmap milestones.</li>
+<li><a href="kernel-instrumentation.html">Kernel Instrumentation</a> — Attaching <code>tcp_connect</code> kprobes and <code>sys_enter_openat</code> tracepoints.</li>
+<li><a href="ebpf-internals.html">eBPF Internals &amp; Bytecode</a> — Invoking <code>bpf_probe_read_user_str</code> and managing verifier complexity bounds.</li>
+<li><a href="ghostring-common-structs.html">ghostring-common Struct Design</a> — Layout specifications for new event structures (<code>FileEvent</code>, <code>SocketEvent</code>).</li>
+<li><a href="event-transport.html">Event Transport</a> — Ring buffer transport scaling for high-throughput socket and openat event streams.</li>
+<li><a href="perf-buffer-internals.html">Perf Buffer Internals</a> — Buffer tuning and head/tail management under high event rates.</li>
+<li><a href="ghostring-user-daemon.html">ghostring User Daemon</a> — Parsing new event types and exporting structured JSON for SIEM integration.</li>
+<li><a href="testing-strategy.html">Testing Strategy</a> — Test harnesses, syscall load benchmarking, and verification test suites.</li>
+</ul>
+        </article>
+
+        <div class="doc-pagination">
+
+      <a href="troubleshooting-guide.html" class="pagination-card prev-card">
+        <span class="pagination-label">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          Previous
+        </span>
+        <span class="pagination-title">GhostRing Troubleshooting Guide Deep Dive</span>
+      </a>
+<div class="pagination-spacer"></div>
+</div>
+
+        <footer class="docs-footer">
+          <div class="footer-left">
+            <span>GhostRing eBPF Security Subsystem • Licensed under GPLv3</span>
+          </div>
+          <div class="footer-right">
+            <a href="#top" class="back-to-top-btn">Back to top ↑</a>
+          </div>
+        </footer>
+      </div>
+    </main>
+
+    <!-- Right "On This Page" Sidebar -->
+    <aside class="docs-toc-aside">
+      <div class="toc-sticky-container">
+        <div class="toc-heading">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+          <span>On this page</span>
+        </div>
+        <ul class="toc-list">
+
+      <li class="toc-item toc-item-h2">
+        <a href="#feature-1-advanced-path-extraction-via-bpf_probe_read_user_str" class="toc-link" data-heading="feature-1-advanced-path-extraction-via-bpf_probe_read_user_str">Feature 1: Advanced Path Extraction via bpf_probe_read_user_str</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#current-limitation" class="toc-link" data-heading="current-limitation">Current Limitation</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#roadmap-solution-bpf_probe_read_user_str" class="toc-link" data-heading="roadmap-solution-bpf_probe_read_user_str">Roadmap Solution: bpf_probe_read_user_str</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#feature-2-network-socket-observability-tcp_connect-kprobes" class="toc-link" data-heading="feature-2-network-socket-observability-tcp_connect-kprobes">Feature 2: Network Socket Observability (tcp_connect kprobes)</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#roadmap-overview" class="toc-link" data-heading="roadmap-overview">Roadmap Overview</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#kprobe-attachment-points" class="toc-link" data-heading="kprobe-attachment-points">kprobe Attachment Points</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#ebpf-program-design" class="toc-link" data-heading="ebpf-program-design">eBPF Program Design</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#networkevent-struct" class="toc-link" data-heading="networkevent-struct">NetworkEvent Struct</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#kprobe-vs-tracepoint-for-network" class="toc-link" data-heading="kprobe-vs-tracepoint-for-network">kprobe vs tracepoint for Network</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#address-extraction-challenges" class="toc-link" data-heading="address-extraction-challenges">Address Extraction Challenges</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#filtering-and-classification" class="toc-link" data-heading="filtering-and-classification">Filtering and Classification</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#alerting-rules" class="toc-link" data-heading="alerting-rules">Alerting Rules</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#performance-considerations" class="toc-link" data-heading="performance-considerations">Performance Considerations</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#kernel-version-support" class="toc-link" data-heading="kernel-version-support">Kernel Version Support</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#implementation-checklist-network-feature" class="toc-link" data-heading="implementation-checklist-network-feature">Implementation Checklist - Network Feature</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#feature-3-file-integrity-monitoring-sys_enter_openat" class="toc-link" data-heading="feature-3-file-integrity-monitoring-sys_enter_openat">Feature 3: File Integrity Monitoring (sys_enter_openat)</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#roadmap-overview_1" class="toc-link" data-heading="roadmap-overview_1">Roadmap Overview</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#probe-attachment" class="toc-link" data-heading="probe-attachment">Probe Attachment</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#sys_enter_openat-arguments" class="toc-link" data-heading="sys_enter_openat-arguments">sys_enter_openat Arguments</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#ebpf-program-design_1" class="toc-link" data-heading="ebpf-program-design_1">eBPF Program Design</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#fileevent-struct" class="toc-link" data-heading="fileevent-struct">FileEvent Struct</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#fileeventtype-enumeration" class="toc-link" data-heading="fileeventtype-enumeration">FileEventType Enumeration</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#sensitive-file-classification" class="toc-link" data-heading="sensitive-file-classification">Sensitive File Classification</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#alert-prioritization" class="toc-link" data-heading="alert-prioritization">Alert Prioritization</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#integration-with-existing-event-pipeline" class="toc-link" data-heading="integration-with-existing-event-pipeline">Integration with Existing Event Pipeline</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#performance-impact_1" class="toc-link" data-heading="performance-impact_1">Performance Impact</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#kernel-version-support_1" class="toc-link" data-heading="kernel-version-support_1">Kernel Version Support</a>
+      </li>
+
+      <li class="toc-item toc-item-h3">
+        <a href="#implementation-checklist-file-monitoring" class="toc-link" data-heading="implementation-checklist-file-monitoring">Implementation Checklist - File Monitoring</a>
+      </li>
+
+      <li class="toc-item toc-item-h2">
+        <a href="#related-documentation" class="toc-link" data-heading="related-documentation">Related Documentation</a>
+      </li>
+</ul>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Interactive Search Modal -->
+  <div id="search-modal" class="search-modal" aria-hidden="true" role="dialog">
+    <div class="search-modal-backdrop"></div>
+    <div class="search-modal-box">
+      <div class="search-input-wrapper">
+        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="search-input" class="search-input" placeholder="Search documentation, topics, APIs, CLI flags..." autocomplete="off">
+        <button id="search-clear-btn" class="search-clear-btn" aria-label="Clear query">&times;</button>
+      </div>
+      <div id="search-results" class="search-results">
+        <div class="search-initial-state">Type a keyword to search docs...</div>
+      </div>
+      <div class="search-modal-footer">
+        <span class="search-hint"><kbd>↑</kbd><kbd>↓</kbd> to navigate</span>
+        <span class="search-hint"><kbd>Enter</kbd> to select</span>
+        <span class="search-hint"><kbd>Esc</kbd> to close</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/search-index.js"></script>
+  <script src="assets/docs.js"></script>
+</body>
+</html>
